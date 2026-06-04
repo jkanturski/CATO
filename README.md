@@ -13,7 +13,10 @@ which mpiexec
 ```
 ### conda
 ```
-source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh
+source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh  
+conda create -n nazwa_srodowiska python=3.9 -y
+conda activate nazwa_srodowiska  
+conda deactivate
 ```
 ### przykład uruchomienia programu
 ```
