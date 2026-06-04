@@ -8,3 +8,6 @@ module load compilers/nvidia/hpc_sdk/21.9
 
 ### ustawienie zmiennej dla condy
 source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh
+
+### przykład uruchomienia programu
+mpiexec -n 2 python send_dict.py
