@@ -1,4 +1,4 @@
-### tryb interaktywny węzła obliczeniowego
+### tryb interaktywny węzła
 ```
 bsub -Is -n 2 -q interactive bash
 ```
