@@ -11,7 +11,7 @@ module load compilers/nvidia/hpc_sdk/21.9
 
 # 2. Initialize Conda for a non-interactive shell
 # (This hook is required because batch scripts run in the background without a normal terminal)
-eval "$(conda shell.bash hook)"
+source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh  
 conda activate torch2_p9
 
 # 3. Execute the code
