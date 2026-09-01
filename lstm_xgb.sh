@@ -10,6 +10,9 @@
 export NCCL_SOCKET_IFNAME=clpriv
 export NCCL_IB_DISABLE=0
 
+source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh  
+conda activate torch2_p9
+
 # Extract master node IP
 nodes=$(cat $LSB_DJOB_HOSTFILE | sort | uniq | grep -v login)
 master_node=$(head -n 1 <<< "$nodes")
