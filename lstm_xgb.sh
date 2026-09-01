@@ -3,7 +3,7 @@
 #BSUB -q night
 #BSUB -n 12
 #BSUB -R "span[ptile=2]"
-#BSUB -gpu "num=2:mode=exclusive_process"
+#BSUB -gpu "num=2:mode=shared"
 #BSUB -o ddp_hybrid.%J.out
 #BSUB -e ddp_hybrid.%J.err
 
@@ -19,7 +19,8 @@ nodes=$(cat $LSB_DJOB_HOSTFILE | sort | uniq | grep -v login)
 master_node=$(head -n 1 <<< "$nodes")
 # getent resolves the IP locally without requiring SSH authentication
 master_addr=$(getent hosts $master_node | awk '{print $1}')
-
+export OMP_NUM_THREADS=1
+export KMP_DUPLICATE_LIB_OK=TRUE
 # 3. Scatter the task across all allocated nodes using LSF blaunch
 for node in $nodes; do
     blaunch $node torchrun \
