@@ -57,11 +57,12 @@ def train_pipeline():
     # to free the GPU for XGBoost in LSF exclusive_process mode.
     dist.destroy_process_group()
     torch.cuda.empty_cache()
+
+    # --- Phase 3: GPU-Accelerated XGBoost (Global Rank 0 Only) ---
+    # Extract the global rank explicitly from torchrun's environment variables
+    global_rank = int(os.environ["RANK"])
     
-    # --- Phase 3: GPU-Accelerated XGBoost (Rank 0 Only) ---
-    # Note: Use local_rank == 0 instead of dist.get_rank() because 
-    # the process group is now destroyed.
-    if local_rank == 0:
+    if global_rank == 0:
         gathered_features = torch.cat(gathered_features_list, dim=0).cpu().numpy()
         gathered_targets = torch.cat(gathered_targets_list, dim=0).cpu().numpy()
         
@@ -69,15 +70,14 @@ def train_pipeline():
         
         params = {
             'objective': 'reg:squarederror',
-            'tree_method': 'hist',
-            'device': 'cuda:0', 
+            'tree_method': 'gpu_hist', # Power9/Older XGBoost GPU syntax
             'learning_rate': 0.05,
             'max_depth': 6
         }
         
         bst = xgb.train(params, dtrain, num_boost_round=100)
         bst.save_model("hybrid_crypto_model.json")
-        print("XGBoost training complete. Model saved on Rank 0.")
+        print(f"XGBoost training complete. Model saved by Global Rank {global_rank}.")
     
 if __name__ == "__main__":
     train_pipeline()
