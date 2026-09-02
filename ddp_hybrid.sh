@@ -14,14 +14,17 @@ export NCCL_IB_DISABLE=0
 source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh
 conda activate torch2_p9
 
-# 2. Extract Master Node IP WITHOUT SSH
+# 2. Extract Master Node IPv4 Address
 nodes=$(cat $LSB_DJOB_HOSTFILE | sort | uniq | grep -v login)
 master_node=$(head -n 1 <<< "$nodes")
-# getent resolves the IP locally without requiring SSH authentication
-master_addr=$(getent hosts $master_node | awk '{print $1}')
+
+# Enforce IPv4 lookup (ahostsv4) to prevent IPv6 colon parsing collisions in torchrun
+master_addr=$(getent ahostsv4 $master_node | awk '{print $1}' | head -n 1)
+
 export OMP_NUM_THREADS=1
 export KMP_DUPLICATE_LIB_OK=TRUE
-# 3. Scatter the task across all allocated nodes using LSF blaunch
+
+# 3. Scatter tasks across allocated nodes
 for node in $nodes; do
     blaunch $node torchrun \
         --nnodes=6 \
@@ -32,5 +35,4 @@ for node in $nodes; do
         train_hybrid.py &
 done
 
-# Wait for all background blaunch tasks to complete
 wait
