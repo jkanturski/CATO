@@ -42,27 +42,22 @@ def train_pipeline():
     ddp_model.eval()
     
     with torch.no_grad():
-        # Assuming you just extracted the final batch of the epoch
-        # prediction, final_hidden = ddp_model(inputs)
-        
-        # Ensure tensors are contiguous in memory before network transmission
         local_features = final_hidden.contiguous()
         local_targets = targets.contiguous() 
     
         world_size = dist.get_world_size()
-    
-        # Create empty placeholder lists on the current GPU
         gathered_features_list = [torch.zeros_like(local_features) for _ in range(world_size)]
         gathered_targets_list = [torch.zeros_like(local_targets) for _ in range(world_size)]
     
-        # Synchronize and collect tensors from all 12 GPUs 
         dist.all_gather(gathered_features_list, local_features)
         dist.all_gather(gathered_targets_list, local_targets)
+
+    # CRITICAL: Release PyTorch's exclusive hold on the GPUs
+    dist.destroy_process_group()
+    torch.cuda.empty_cache()
     
     # --- Phase 3: GPU-Accelerated XGBoost (Rank 0 Only) ---
-    if dist.get_rank() == 0:
-        # Concatenate the lists into single tensors
-        # Move to CPU and convert to NumPy for XGBoost DMatrix ingestion
+    if local_rank == 0:
         gathered_features = torch.cat(gathered_features_list, dim=0).cpu().numpy()
         gathered_targets = torch.cat(gathered_targets_list, dim=0).cpu().numpy()
         
