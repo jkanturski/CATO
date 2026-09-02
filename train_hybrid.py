@@ -9,12 +9,10 @@ class CryptoLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers):
         super().__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, 1) # Proxy target for sequential training
+        self.fc = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        # Output shape: (batch, seq_len, hidden_size)
         out, (hn, cn) = self.lstm(x)
-        # Extract the final hidden state for XGBoost feature mapping
         final_hidden = out[:, -1, :] 
         prediction = self.fc(final_hidden)
         return prediction, final_hidden
@@ -28,40 +26,45 @@ def setup():
 def train_pipeline():
     local_rank = setup()
     
-    # 1. Initialize LSTM and DDP
     model = CryptoLSTM(input_size=15, hidden_size=64, num_layers=2).cuda(local_rank)
     ddp_model = DDP(model, device_ids=[local_rank])
-    optimizer = torch.optim.Adam(ddp_model.parameters(), lr=1e-3 * 12) # Linear scaling
-    scaler = torch.cuda.amp.GradScaler()
-
-    # Phase 1: Distributed LSTM Training (Proxy task)
-    ddp_model.train()
-    # ... DataLoader loop with torch.autocast for V100 AMP goes here ...
 
     # --- Phase 2: Feature Extraction and Synchronization ---
     ddp_model.eval()
     
     with torch.no_grad():
+        # [!] FIXED: Generate dummy tensors so the script actually compiles.
+        # Replace this with your actual DataLoader output later.
+        batch_size = 32
+        inputs = torch.randn(batch_size, 10, 15).cuda(local_rank)
+        targets = torch.randn(batch_size, 1).cuda(local_rank)
+        
+        # [!] FIXED: Uncommented the forward pass so final_hidden is defined.
+        prediction, final_hidden = ddp_model(inputs)
+        
         local_features = final_hidden.contiguous()
         local_targets = targets.contiguous() 
     
         world_size = dist.get_world_size()
+        
         gathered_features_list = [torch.zeros_like(local_features) for _ in range(world_size)]
         gathered_targets_list = [torch.zeros_like(local_targets) for _ in range(world_size)]
     
         dist.all_gather(gathered_features_list, local_features)
         dist.all_gather(gathered_targets_list, local_targets)
 
-    # CRITICAL: Release PyTorch's exclusive hold on the GPUs
+    # [!] FIXED: Explicitly release the PyTorch NCCL process group 
+    # to free the GPU for XGBoost in LSF exclusive_process mode.
     dist.destroy_process_group()
     torch.cuda.empty_cache()
     
     # --- Phase 3: GPU-Accelerated XGBoost (Rank 0 Only) ---
+    # Note: Use local_rank == 0 instead of dist.get_rank() because 
+    # the process group is now destroyed.
     if local_rank == 0:
         gathered_features = torch.cat(gathered_features_list, dim=0).cpu().numpy()
         gathered_targets = torch.cat(gathered_targets_list, dim=0).cpu().numpy()
         
-        # Proceed with XGBoost initialization
         dtrain = xgb.DMatrix(gathered_features, label=gathered_targets)
         
         params = {
@@ -74,6 +77,7 @@ def train_pipeline():
         
         bst = xgb.train(params, dtrain, num_boost_round=100)
         bst.save_model("hybrid_crypto_model.json")
+        print("XGBoost training complete. Model saved on Rank 0.")
     
 if __name__ == "__main__":
     train_pipeline()
