@@ -38,26 +38,47 @@ def train_pipeline():
     ddp_model.train()
     # ... DataLoader loop with torch.autocast for V100 AMP goes here ...
 
-    # Phase 2: Feature Extraction
+    # --- Phase 2: Feature Extraction and Synchronization ---
     ddp_model.eval()
-    # ... Pass full dataset through model to extract final_hidden ...
-    # ... Use dist.all_gather() to collect hidden states across 6 nodes to Rank 0 ...
     
-    # Phase 3: GPU-Accelerated XGBoost (Rank 0 Only)
+    with torch.no_grad():
+        # Assuming you just extracted the final batch of the epoch
+        # prediction, final_hidden = ddp_model(inputs)
+        
+        # Ensure tensors are contiguous in memory before network transmission
+        local_features = final_hidden.contiguous()
+        local_targets = targets.contiguous() 
+    
+        world_size = dist.get_world_size()
+    
+        # Create empty placeholder lists on the current GPU
+        gathered_features_list = [torch.zeros_like(local_features) for _ in range(world_size)]
+        gathered_targets_list = [torch.zeros_like(local_targets) for _ in range(world_size)]
+    
+        # Synchronize and collect tensors from all 12 GPUs 
+        dist.all_gather(gathered_features_list, local_features)
+        dist.all_gather(gathered_targets_list, local_targets)
+    
+    # --- Phase 3: GPU-Accelerated XGBoost (Rank 0 Only) ---
     if dist.get_rank() == 0:
-        # Combine gathered LSTM features with auxiliary tabular data
+        # Concatenate the lists into single tensors
+        # Move to CPU and convert to NumPy for XGBoost DMatrix ingestion
+        gathered_features = torch.cat(gathered_features_list, dim=0).cpu().numpy()
+        gathered_targets = torch.cat(gathered_targets_list, dim=0).cpu().numpy()
+        
+        # Proceed with XGBoost initialization
         dtrain = xgb.DMatrix(gathered_features, label=gathered_targets)
         
         params = {
             'objective': 'reg:squarederror',
             'tree_method': 'hist',
-            'device': 'cuda:0', # Utilize rank 0's Tesla V100
+            'device': 'cuda:0', 
             'learning_rate': 0.05,
             'max_depth': 6
         }
         
         bst = xgb.train(params, dtrain, num_boost_round=100)
         bst.save_model("hybrid_crypto_model.json")
-
+    
 if __name__ == "__main__":
     train_pipeline()
