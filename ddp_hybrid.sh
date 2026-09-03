@@ -24,6 +24,9 @@ master_addr=$(getent ahostsv4 $master_node | awk '{print $1}' | head -n 1)
 export OMP_NUM_THREADS=1
 export KMP_DUPLICATE_LIB_OK=TRUE
 
+# Prevent LSF from injecting a conflicting master address into torchrun
+unset MASTER_ADDR
+
 # 3. Scatter tasks across allocated nodes
 for node in $nodes; do
     blaunch $node torchrun \
