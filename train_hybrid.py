@@ -33,13 +33,10 @@ def train_pipeline():
     ddp_model.eval()
     
     with torch.no_grad():
-        # [!] FIXED: Generate dummy tensors so the script actually compiles.
-        # Replace this with your actual DataLoader output later.
         batch_size = 32
         inputs = torch.randn(batch_size, 10, 15).cuda(local_rank)
         targets = torch.randn(batch_size, 1).cuda(local_rank)
         
-        # [!] FIXED: Uncommented the forward pass so final_hidden is defined.
         prediction, final_hidden = ddp_model(inputs)
         
         local_features = final_hidden.contiguous()
@@ -53,13 +50,10 @@ def train_pipeline():
         dist.all_gather(gathered_features_list, local_features)
         dist.all_gather(gathered_targets_list, local_targets)
 
-    # [!] FIXED: Explicitly release the PyTorch NCCL process group 
-    # to free the GPU for XGBoost in LSF exclusive_process mode.
     dist.destroy_process_group()
     torch.cuda.empty_cache()
 
-    # --- Phase 3: GPU-Accelerated XGBoost (Global Rank 0 Only) ---
-    # Extract the global rank explicitly from torchrun's environment variables
+    # --- Phase 3: CPU-Accelerated XGBoost (Global Rank 0 Only) ---
     global_rank = int(os.environ["RANK"])
     
     if global_rank == 0:
@@ -70,7 +64,7 @@ def train_pipeline():
         
         params = {
             'objective': 'reg:squarederror',
-            'tree_method': 'gpu_hist', # Power9/Older XGBoost GPU syntax
+            'tree_method': 'hist', # CHANGED: Uses fast CPU multi-threading
             'learning_rate': 0.05,
             'max_depth': 6
         }
