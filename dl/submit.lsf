@@ -1,0 +1,35 @@
+#!/bin/bash
+#BSUB -J crypto_ddp_amp
+#BSUB -q gpu_queue               # Adjust to CATO's specific GPU queue name
+#BSUB -n 12                      # Total number of processes (6 nodes * 2 GPUs)
+#BSUB -R "span[ptile=2]"         # 2 processes (GPUs) per node
+#BSUB -gpu "num=2:mode=exclusive_process"
+#BSUB -o logs/%J.out
+#BSUB -e logs/%J.err
+#BSUB -W 12:00                   # 12 hour time limit
+
+# 1. Load required environment modules
+module load python/3.10 cuda/11.8 openmpi
+
+# 2. Dynamically extract the master node IP and allocated hosts from LSF
+NODES=$(echo $LSB_MCPU_HOSTS | awk '{for(i=1;i<=NF;i+=2) print $i}' | sort -u)
+MASTER_NODE=$(echo $NODES | awk '{print $1}')
+MASTER_PORT=29500
+WORLD_SIZE=6
+
+echo "Master Node: $MASTER_NODE"
+echo "Allocated Nodes: $NODES"
+
+# 3. Launch torchrun on every allocated node using blaunch
+for node in $NODES; do
+    blaunch $node torchrun \
+        --nnodes=$WORLD_SIZE \
+        --nproc_per_node=2 \
+        --rdzv_id=$LSB_JOBID \
+        --rdzv_backend=c10d \
+        --rdzv_endpoint=$MASTER_NODE:$MASTER_PORT \
+        train.py &
+done
+
+# Wait for all blaunch background processes to finish
+wait
