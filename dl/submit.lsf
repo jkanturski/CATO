@@ -1,35 +1,42 @@
 #!/bin/bash
 #BSUB -J crypto_ddp_amp
 #BSUB -q night
-#BSUB -n 12                      # Total number of processes (6 nodes * 2 GPUs)
-#BSUB -R "span[ptile=2]"         # 2 processes (GPUs) per node
+#BSUB -n 12
+#BSUB -R "span[ptile=2]"
 #BSUB -gpu "num=2:mode=exclusive_process"
-#BSUB -o logs/%J.out
-#BSUB -e logs/%J.err
-#BSUB -W 12:00                   # 12 hour time limit
+#BSUB -o ddp_tcn.%J.out
+#BSUB -e ddp_tcn.%J.err
 
-# 1. Load required environment modules
-module load python/3.10 cuda/11.8 openmpi
+# NCCL networking variables
+export NCCL_SOCKET_IFNAME=clpriv
+export NCCL_IB_DISABLE=0
 
-# 2. Dynamically extract the master node IP and allocated hosts from LSF
-NODES=$(echo $LSB_MCPU_HOSTS | awk '{for(i=1;i<=NF;i+=2) print $i}' | sort -u)
-MASTER_NODE=$(echo $NODES | awk '{print $1}')
-MASTER_PORT=29500
-WORLD_SIZE=6
+# 1. Initialize Conda environment correctly
+source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh
+conda activate torch2_p9
 
-echo "Master Node: $MASTER_NODE"
-echo "Allocated Nodes: $NODES"
+export OMP_NUM_THREADS=1
+export KMP_DUPLICATE_LIB_OK=TRUE
+
+# Prevent LSF from injecting a conflicting master address into torchrun
+unset MASTER_ADDR
+
+# 2. Extract Master Node IPv4 Address
+nodes=$(cat $LSB_DJOB_HOSTFILE | sort | uniq | grep -v login)
+master_node=$(head -n 1 <<< "$nodes")
+
+# Enforce IPv4 lookup (ahostsv4) to prevent IPv6 colon parsing collisions
+master_addr=$(getent ahostsv4 $master_node | awk '{print $1}' | head -n 1)
 
 # 3. Launch torchrun on every allocated node using blaunch
-for node in $NODES; do
+for node in $nodes; do
     blaunch $node torchrun \
-        --nnodes=$WORLD_SIZE \
+        --nnodes=6 \
         --nproc_per_node=2 \
         --rdzv_id=$LSB_JOBID \
         --rdzv_backend=c10d \
-        --rdzv_endpoint=$MASTER_NODE:$MASTER_PORT \
+        --rdzv_endpoint=${master_addr}:29505 \
         train.py &
 done
 
-# Wait for all blaunch background processes to finish
 wait
