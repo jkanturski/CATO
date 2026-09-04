@@ -1,6 +1,6 @@
 #!/bin/bash
 #BSUB -J crypto_ddp_amp
-#BSUB -q gpu_queue               # Adjust to CATO's specific GPU queue name
+#BSUB -q night
 #BSUB -n 12                      # Total number of processes (6 nodes * 2 GPUs)
 #BSUB -R "span[ptile=2]"         # 2 processes (GPUs) per node
 #BSUB -gpu "num=2:mode=exclusive_process"
