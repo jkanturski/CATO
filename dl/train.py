@@ -5,7 +5,7 @@ import torch.distributed as dist
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.amp import autocast, GradScaler
+from torch.cuda.amp import autocast, GradScaler
 
 # Assume TCNModel and CryptoTimeSeriesDataset are imported
 
