@@ -1,28 +1,23 @@
 import torch
+import polars as pl
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import Dataset
 
 class CryptoTimeSeriesDataset(Dataset):
-    def __init__(self, features: np.ndarray, targets: np.ndarray, seq_len: int = 60):
-        self.features = torch.tensor(features, dtype=torch.float32)
-        self.targets = torch.tensor(targets, dtype=torch.float32)
-        self.seq_len = seq_len
-        self.total_samples = len(self.features) - self.seq_len
+    def __init__(self, parquet_path, seq_length=128):
+        # Load historical Solana/Aave market data
+        self.df = pl.read_parquet(parquet_path)
+        self.seq_length = seq_length
+        
+        # Assuming 'target_return' is the label and the rest are features (e.g., L2 depth, RSI)
+        self.targets = self.df["target_return"].to_numpy(dtype=np.float32)
+        self.features = self.df.drop(["target_return", "timestamp"]).to_numpy(dtype=np.float32)
 
     def __len__(self):
-        return self.total_samples
+        return len(self.df) - self.seq_length
 
     def __getitem__(self, idx):
-        return self.features[idx : idx + self.seq_len], self.targets[idx + self.seq_len]
-
-def prepare_dataloader(dataset, global_rank, world_size, batch_size):
-    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=global_rank, shuffle=True)
-    dataloader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        sampler=sampler, 
-        num_workers=4, 
-        pin_memory=True
-    )
-    return dataloader, sampler
+        # Extract sliding window
+        x = self.features[idx : idx + self.seq_length]
+        y = self.targets[idx + self.seq_length]
+        return torch.tensor(x), torch.tensor(y)
