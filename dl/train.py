@@ -8,7 +8,7 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from dataset import CryptoTimeSeriesDataset
-# Ensure TCNModel is imported here
+from model import CryptoTCN
 
 def train():
     dist.init_process_group("nccl")
@@ -38,7 +38,7 @@ def train():
         num_workers=8, pin_memory=True, persistent_workers=True
     )
 
-    model = TCNModel(num_channels=[64, 128, 256], kernel_size=3).cuda(local_rank)
+    model = CryptoTCN(num_channels=[64, 128, 256], kernel_size=3).cuda(local_rank)
     model = DDP(model, device_ids=[local_rank])
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
