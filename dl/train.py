@@ -3,14 +3,12 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.distributed as dist
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from dataset import CryptoTimeSeriesDataset
-from torch.utils.data import random_split
-
-# Assume TCNModel and CryptoTimeSeriesDataset are imported
+# Ensure TCNModel is imported here
 
 def train():
     dist.init_process_group("nccl")
@@ -18,10 +16,15 @@ def train():
     global_rank = dist.get_rank()
     torch.cuda.set_device(local_rank)
     
+    script_dir = Path(__file__).resolve().parent
+
     full_dataset = CryptoTimeSeriesDataset("/home/jkanturski/uksw/CATO/dl/data/train_solana_aave.parquet")
     train_size = int(0.8 * len(full_dataset))
     val_size = len(full_dataset) - train_size
-    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+    # Enforce identical random split across all 12 DDP ranks via a fixed generator seed
+    generator = torch.Generator().manual_seed(42)
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=generator)
     
     train_sampler = DistributedSampler(train_dataset)
     val_sampler = DistributedSampler(val_dataset, shuffle=False)
@@ -44,7 +47,6 @@ def train():
 
     epochs = 50
     for epoch in range(epochs):
-        # Critical: Shuffle data differently each epoch in DDP
         train_sampler.set_epoch(epoch) 
         
         model.train()
@@ -54,7 +56,7 @@ def train():
             
             optimizer.zero_grad(set_to_none=True)
             
-            with autocast("cuda"):
+            with autocast():
                 outputs = model(x)
                 loss = criterion(outputs.squeeze(), y)
             
@@ -70,19 +72,19 @@ def train():
         with torch.no_grad():
             for x, y in val_loader:
                 x, y = x.cuda(local_rank, non_blocking=True), y.cuda(local_rank, non_blocking=True)
-                with autocast("cuda"):
+                with autocast():
                     outputs = model(x)
                     loss = criterion(outputs.squeeze(), y)
                 val_loss += loss.item()
         
-        # Sync metrics across all GPUs for accurate logging
+        # Sync metrics across all GPUs
         metrics = torch.tensor([train_loss / len(train_loader), val_loss / len(val_loader)]).cuda(local_rank)
         dist.all_reduce(metrics, op=dist.ReduceOp.SUM)
         metrics /= dist.get_world_size()
         
         # Rank 0 Logging & Checkpointing
         if global_rank == 0:
-            print(f"Epoch {epoch} | Train Loss: {metrics[0]:.4f} | Val Loss: {metrics[1]:.4f}")
+            print(f"Epoch {epoch:02d} | Train Loss: {metrics[0]:.6f} | Val Loss: {metrics[1]:.6f}")
             
             if epoch % 5 == 0 or epoch == epochs - 1:
                 checkpoint = {
@@ -92,7 +94,6 @@ def train():
                     'loss': metrics[1].item()
                 }
                 
-                # FIX: Resolve absolute path and create the directory if it's missing
                 checkpoint_dir = script_dir / "checkpoints"
                 checkpoint_dir.mkdir(parents=True, exist_ok=True)
                 
