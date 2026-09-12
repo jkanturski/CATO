@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -15,9 +16,13 @@ def train():
     local_rank = int(os.environ["LOCAL_RANK"])
     global_rank = dist.get_rank()
     torch.cuda.set_device(local_rank)
+    
+    script_dir = Path(__file__).resolve().parent
+    train_path = script_dir / "data" / "train_solana_aave.parquet"
+    val_path = script_dir / "data" / "val_solana_aave.parquet"
 
-    train_dataset = CryptoTimeSeriesDataset("data/train_solana_aave.parquet")
-    val_dataset = CryptoTimeSeriesDataset("data/val_solana_aave.parquet")
+    train_dataset = CryptoTimeSeriesDataset(str(train_path))
+    val_dataset = CryptoTimeSeriesDataset(str(val_path))
 
     train_sampler = DistributedSampler(train_dataset)
     val_sampler = DistributedSampler(val_dataset, shuffle=False)
