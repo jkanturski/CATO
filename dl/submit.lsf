@@ -1,42 +1,51 @@
 #!/bin/bash
-#BSUB -J crypto_ddp_amp
-#BSUB -q night
+#BSUB -J crypto_tcn_12gpu
+#BSUB -q gpu
+#BSUB -W 08:00
 #BSUB -n 12
-#BSUB -R "span[ptile=2]"
-#BSUB -gpu "num=2:mode=exclusive_process"
-#BSUB -o ddp_tcn.%J.out
-#BSUB -e ddp_tcn.%J.err
+#BSUB -R "span[ptile=4]"
+#BSUB -gpu "num=4:mode=exclusive_process"
+#BSUB -o logs/train_%J.out
+#BSUB -e logs/train_%J.err
 
-# NCCL networking variables
-export NCCL_SOCKET_IFNAME=clpriv
-export NCCL_IB_DISABLE=0
+# Load environment (adjust paths/modules to your CATO configuration)
+# module load cuda python
+# source /home/jkanturski/uksw/CATO/dl/venv/bin/activate
 
-# 1. Initialize Conda environment correctly
-source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh
-conda activate torch2_p9
+WORK_DIR="/home/jkanturski/uksw/CATO/dl"
+cd $WORK_DIR
 
-export OMP_NUM_THREADS=1
-export KMP_DUPLICATE_LIB_OK=TRUE
+# Extract the unique hostnames allocated by Spectrum LSF
+HOST_LIST=$(cat $LSB_DJOB_HOSTFILE | sort | uniq)
 
-# Prevent LSF from injecting a conflicting master address into torchrun
-unset MASTER_ADDR
+# Define rendezvous parameters for PyTorch distributed backend
+MASTER_ADDR=$(echo "$HOST_LIST" | head -n 1)
+MASTER_PORT=29500
+NNODES=$(echo "$HOST_LIST" | wc -l)
+NGPUS_PER_NODE=4
 
-# 2. Extract Master Node IPv4 Address and export endpoint variables
-nodes=$(cat $LSB_DJOB_HOSTFILE | sort | uniq | grep -v login)
-master_node=$(head -n 1 <<< "$nodes")
+echo "--- Distributed Training Initialized ---"
+echo "Master node: $MASTER_ADDR"
+echo "Total nodes: $NNODES"
+echo "GPUs per node: $NGPUS_PER_NODE"
+echo "Job ID: $LSB_JOBID"
 
-export MASTER_ADDR=$(getent ahostsv4 $master_node | awk '{print $1}' | head -n 1)
-export MASTER_PORT=29505
-
-# 3. Launch torchrun on every allocated node using blaunch
-for node in $nodes; do
-    blaunch $node torchrun \
-        --nnodes=6 \
-        --nproc_per_node=2 \
+# Loop through each allocated node and launch torchrun via blaunch
+NODE_RANK=0
+for NODE in $HOST_LIST; do
+    echo "Spawning torchrun on $NODE (Node Rank: $NODE_RANK)..."
+    
+    blaunch -z "$NODE" torchrun \
+        --nnodes=$NNODES \
+        --nproc_per_node=$NGPUS_PER_NODE \
+        --node_rank=$NODE_RANK \
         --rdzv_id=$LSB_JOBID \
         --rdzv_backend=c10d \
         --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
         train.py &
+        
+    NODE_RANK=$((NODE_RANK + 1))
 done
 
+# Wait for all background blaunch processes to finish
 wait
