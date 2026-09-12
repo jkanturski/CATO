@@ -88,12 +88,16 @@ def train():
             if epoch % 5 == 0 or epoch == epochs - 1:
                 checkpoint = {
                     'epoch': epoch,
-                    # Use .module to strip the DDP wrapper for easier single-GPU inference later
                     'model_state_dict': model.module.state_dict(), 
                     'optimizer_state_dict': optimizer.state_dict(),
                     'loss': metrics[1].item()
                 }
-                torch.save(checkpoint, f"checkpoints/tcn_epoch_{epoch}.pt")
+                
+                # FIX: Resolve absolute path and create the directory if it's missing
+                checkpoint_dir = script_dir / "checkpoints"
+                checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                
+                torch.save(checkpoint, str(checkpoint_dir / f"tcn_epoch_{epoch}.pt"))
 
     dist.destroy_process_group()
 
