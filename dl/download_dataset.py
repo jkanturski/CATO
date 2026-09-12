@@ -19,8 +19,11 @@ sol_df = pd.read_csv(sol_csv_path)
 # Normalize column names: remove whitespace and make lowercase
 sol_df.columns = sol_df.columns.str.strip().str.lower()
 
-# Make sure we use the lowercase column names for 'date', 'close', and 'volume'
-sol_df['timestamp'] = pd.to_datetime(sol_df['date']).dt.tz_localize(None)
+sol_df['timestamp'] = pd.to_datetime(
+    sol_df['Day'],
+    dayfirst=True
+).dt.tz_localize(None)
+
 sol_df['sol_close'] = sol_df['close'].astype(float)
 sol_df['sol_volume'] = sol_df['volume'].astype(float)
 sol_df = sol_df[['timestamp', 'sol_close', 'sol_volume']].sort_values('timestamp')
