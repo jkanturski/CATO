@@ -38,7 +38,7 @@ def train():
         num_workers=8, pin_memory=True, persistent_workers=True
     )
 
-    model = CryptoTCN(num_channels=[64, 128, 256], kernel_size=3).cuda(local_rank)
+    model = CryptoTCN(in_channels=6, num_channels=[64, 128, 256], kernel_size=3).cuda(local_rank)
     model = DDP(model, device_ids=[local_rank])
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
