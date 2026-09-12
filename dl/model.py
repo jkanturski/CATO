@@ -62,7 +62,8 @@ class CryptoTCN(nn.Module):
     """
     Temporal Convolutional Network for parallelized time-series forecasting.
     """
-    def __init__(self, input_size=15, num_channels=[64, 64, 64], kernel_size=3, dropout=0.2):
+    # CHANGED: input_size=15 is now input_size=6 to match your dataset features
+    def __init__(self, input_size=6, num_channels=[64, 64, 64], kernel_size=3, dropout=0.2):
         super(CryptoTCN, self).__init__()
         
         layers = []
