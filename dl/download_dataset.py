@@ -1,57 +1,58 @@
-import kagglehub
-import polars as pl
-import yfinance as yf
 import os
+import kagglehub
+import pandas as pd
+import requests
 
-# 1. Download the dataset and get the cache directory
+# 1. Download Solana dataset from Kaggle
 print("Downloading Solana dataset from Kaggle...")
 dataset_dir = kagglehub.dataset_download("craigdagama/solana-historical-data")
 
-# 2. Find the CSV file inside the downloaded directory
 csv_files = [f for f in os.listdir(dataset_dir) if f.endswith('.csv')]
 if not csv_files:
-    raise FileNotFoundError("No CSV file found in the downloaded Kaggle dataset.")
-    
+    raise FileNotFoundError("No CSV file found in the Kaggle download.")
+
 sol_csv_path = os.path.join(dataset_dir, csv_files[0])
-print(f"Loading data from: {sol_csv_path}")
+print(f"Loading Solana data from: {sol_csv_path}")
 
-# 3. Load and format the Solana data
-sol_raw = pl.read_csv(sol_csv_path)
+sol_df = pd.read_csv(sol_csv_path)
 
-# (If the dataset has dirty column names, adjust "Date", "Close", "Volume" accordingly)
-sol_df = sol_raw.select([
-    pl.col("Date").str.to_datetime().dt.replace_time_zone(None).alias("timestamp"),
-    pl.col("Close").cast(pl.Float64).alias("sol_close"),
-    pl.col("Volume").cast(pl.Float64).alias("sol_volume"),
-])
+# Standardize date and select target columns
+sol_df['timestamp'] = pd.to_datetime(sol_df['Date']).dt.tz_localize(None)
+sol_df['sol_close'] = sol_df['Close'].astype(float)
+sol_df['sol_volume'] = sol_df['Volume'].astype(float)
+sol_df = sol_df[['timestamp', 'sol_close', 'sol_volume']].sort_values('timestamp')
 
-# 4. Fetch matching Aave data via yfinance
-print("Fetching matching Aave data...")
-start_date = sol_df["timestamp"].min().strftime("%Y-%m-%d")
-end_date = sol_df["timestamp"].max().strftime("%Y-%m-%d")
+# 2. Fetch Aave historical data directly from Binance REST API (bypasses curl_cffi/ppc64le limits)
+print("Fetching Aave historical data from Binance API...")
+url = "https://api.binance.com/api/v3/klines"
+params = {
+    "symbol": "AAVEUSDT",
+    "interval": "1d",
+    "limit": 1000
+}
+response = requests.get(url, params=params)
+response.raise_for_status()
 
-aave_pd = yf.Ticker("AAVE-USD").history(start=start_date, end=end_date).reset_index()
-aave_df = pl.from_pandas(aave_pd).select([
-    pl.col("Date").dt.cast_time_unit("ms").dt.replace_time_zone(None).alias("timestamp"),
-    pl.col("Close").alias("aave_close"),
-    pl.col("Volume").alias("aave_volume"),
-])
+# Format: [open_time, open, high, low, close, volume, ...]
+aave_records = []
+for kline in response.json():
+    aave_records.append({
+        "timestamp": pd.to_datetime(kline[0], unit='ms'),
+        "aave_close": float(kline[4]),
+        "aave_volume": float(kline[5])
+    })
+aave_df = pd.DataFrame(aave_records)
 
-# 5. Merge and calculate returns
+# 3. Merge and generate return features
 print("Merging datasets...")
-merged_df = (
-    sol_df.join(aave_df, on="timestamp", how="inner")
-    .sort("timestamp")
-    .with_columns([
-        (pl.col("sol_close") / pl.col("sol_close").shift(1) - 1).alias("sol_return"),
-        (pl.col("aave_close") / pl.col("aave_close").shift(1) - 1).alias("aave_return"),
-    ])
-    .drop_nulls()
-)
+merged_df = pd.merge(sol_df, aave_df, on="timestamp", how="inner")
+merged_df['sol_return'] = merged_df['sol_close'].pct_change()
+merged_df['aave_return'] = merged_df['aave_close'].pct_change()
+merged_df = merged_df.dropna().reset_index(drop=True)
 
-# 6. Save directly to the shared data directory
+# 4. Save to shared parquet path
 output_path = "data/train_solana_aave.parquet"
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
-merged_df.write_parquet(output_path)
+merged_df.to_parquet(output_path)
 
-print(f"Success! {len(merged_df)} rows saved to {output_path}")
+print(f"Successfully created {output_path} with {len(merged_df)} records.")
