@@ -8,6 +8,7 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from dataset import CryptoTimeSeriesDataset
+from torch.utils.data import random_split
 
 # Assume TCNModel and CryptoTimeSeriesDataset are imported
 
