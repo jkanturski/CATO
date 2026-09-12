@@ -41,7 +41,7 @@ def train():
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
-    scaler = GradScaler("cuda")
+    scaler = GradScaler()
 
     epochs = 50
     for epoch in range(epochs):
