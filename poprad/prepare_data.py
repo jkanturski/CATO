@@ -7,8 +7,8 @@ writes train/val/test parquet files for each forecasting horizon
 (h in {1, 7, 30} trading days).
 
 Usage:
-    python prepare_data.py --data-dir /Users/rklopotek/CATO/data \
-                            --out-dir /Users/rklopotek/CATO/Poprad_2026/experiments/data
+    python prepare_data.py --data-dir /Users/jkanturski/CATO/data \
+                            --out-dir /Users/jkanturski/CATO/Poprad_2026/experiments/data
 
 Requires: pandas, numpy, openpyxl.
 """
