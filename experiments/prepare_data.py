@@ -8,7 +8,7 @@ writes train/val/test parquet files for each forecasting horizon
 
 Usage:
     python prepare_data.py --data-dir /home/jkanturski/CATO/data \
-                            --out-dir /home/jkanturski/CATO/output/experiments/data
+                            --out-dir /home/jkanturski/CATO/experiments/data
 
 Requires: pandas, numpy, openpyxl.
 """
@@ -89,7 +89,7 @@ def main():
     parser.add_argument("--data-dir", default="/home/jkanturski/CATO/data")
     parser.add_argument(
         "--out-dir",
-        default="/home/jkanturski/CATO/output/experiments/data",
+        default="/home/jkanturski/CATO/experiments/data",
     )
     args = parser.parse_args()
 
