@@ -7,8 +7,8 @@ writes train/val/test parquet files for each forecasting horizon
 (h in {1, 7, 30} trading days).
 
 Usage:
-    python prepare_data.py --data-dir /Users/jkanturski/CATO/data \
-                            --out-dir /Users/jkanturski/CATO/Poprad_2026/experiments/data
+    python prepare_data.py --data-dir /home/jkanturski/CATO/data \
+                            --out-dir /home/jkanturski/CATO/output/experiments/data
 
 Requires: pandas, numpy, openpyxl.
 """
@@ -86,10 +86,10 @@ def add_targets(frame: pd.DataFrame, target_col: str, horizons) -> pd.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", default="/Users/rklopotek/CATO/data")
+    parser.add_argument("--data-dir", default="/home/jkanturski/CATO/data")
     parser.add_argument(
         "--out-dir",
-        default="/Users/rklopotek/CATO/Poprad_2026/experiments/data",
+        default="/home/jkanturski/CATO/output/experiments/data",
     )
     args = parser.parse_args()
 
