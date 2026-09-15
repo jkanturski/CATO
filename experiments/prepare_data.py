@@ -147,11 +147,10 @@ def build_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     cols = [TARGET_COL] + [c for c in FEATURE_COLS if c in df.columns]
     missing = set(FEATURE_COLS) - set(df.columns)
     if missing:
-        print(f"[warn] columns not found in source file, skipping: {len(missing)} columns")
+        print(f"[warn] columns not found in source file, skipping: {missing}")
         
     frame = df[cols].copy()
-    
-    # --- ADD THIS LINE to remove duplicate dates ---
+
     frame = frame[~frame.index.duplicated(keep='last')]
     
     frame = frame.asfreq("B")  # business-day frequency
