@@ -56,7 +56,22 @@ def load_raw(data_dir: str) -> pd.DataFrame:
 
     # CDS 
     cds_path = os.path.join(data_dir, "CDS Poland.xlsx")
-    df_cds = pd.read_excel(cds_path, parse_dates=["Date"]).set_index("Date")
+    
+    # header=2 skips the first two metadata rows and uses row 3 as column headers
+    df_cds = pd.read_excel(cds_path, header=2)
+    
+    # Rename the columns to match what the rest of your script expects
+    df_cds = df_cds.rename(columns={
+        "Timestamp": "Date",
+        "MID_SPREAD": "POLAND CDS USD SR 5Y Corp"
+    })
+    
+    # Drop any empty rows (like those created by empty columns A and B)
+    df_cds = df_cds.dropna(subset=["Date"])
+    
+    # Parse the dates (dayfirst=True handles the DD.MM.YYYY format shown in your file)
+    df_cds["Date"] = pd.to_datetime(df_cds["Date"], dayfirst=True)
+    df_cds = df_cds.set_index("Date")
 
     # ASS
     ass_path = os.path.join(data_dir, "ASS.xlsx")
