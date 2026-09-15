@@ -47,14 +47,24 @@ HORIZONS = [1, 7, 30]
 
 
 def load_raw(data_dir: str) -> pd.DataFrame:
-    """Load and align the 'Copy' sheet of the uncertainty index workbook."""
-    path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
-    xl = pd.ExcelFile(path)
-    df = xl.parse("Copy", header=0, skiprows=[1])
-    df = df.rename(columns={"Unnamed: 0": "Date"})
-    df["Date"] = pd.to_datetime(df["Date"])
-    df = df.sort_values("Date").set_index("Date")
-    return df
+    """Load and align all three source files via inner join."""
+    # Uncertainty
+    unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
+    df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=0, skiprows=[1])
+    df_unc = df_unc.rename(columns={"Unnamed: 0": "Date"}).set_index("Date")
+    df_unc.index = pd.to_datetime(df_unc.index)
+
+    # CDS 
+    cds_path = os.path.join(data_dir, "CDS Poland.xlsx")
+    df_cds = pd.read_excel(cds_path, parse_dates=["Date"]).set_index("Date")
+
+    # ASS
+    ass_path = os.path.join(data_dir, "ASS.xlsx")
+    df_ass = pd.read_excel(ass_path, parse_dates=["Date"]).set_index("Date")
+
+    # Inner join resolves Polish/US/German holiday misalignment natively
+    df = df_cds.join([df_ass, df_unc], how="inner")
+    return df.sort_index()
 
 
 def build_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
