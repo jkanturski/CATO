@@ -139,11 +139,21 @@ def load_raw(data_dir: str) -> pd.DataFrame:
 
 def build_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     """Select target + curated features, forward-fill to business days."""
+    
+    if TARGET_COL not in df.columns:
+        print(f"\n[FATAL ERROR] Target column '{TARGET_COL}' not found.")
+        raise KeyError(f"Target '{TARGET_COL}' not in index")
+
     cols = [TARGET_COL] + [c for c in FEATURE_COLS if c in df.columns]
     missing = set(FEATURE_COLS) - set(df.columns)
     if missing:
-        print(f"[warn] columns not found in source file, skipping: {missing}")
+        print(f"[warn] columns not found in source file, skipping: {len(missing)} columns")
+        
     frame = df[cols].copy()
+    
+    # --- ADD THIS LINE to remove duplicate dates ---
+    frame = frame[~frame.index.duplicated(keep='last')]
+    
     frame = frame.asfreq("B")  # business-day frequency
     frame = frame.ffill()
     return frame
