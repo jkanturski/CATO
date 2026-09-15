@@ -46,28 +46,21 @@ LAGS = [1, 5, 20]
 HORIZONS = [1, 7, 30]
 
 def load_raw(data_dir: str) -> pd.DataFrame:
-    """Load and align all source files via inner join using dynamic header matching."""
-    # 1. Uncertainty Index (loading static values from 'Copy' sheet)
-    unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
+    """Load and align all source files via robust inner join with normalized dates."""
     
-    # header=0 reads Excel Row 1 as column names; skiprows=[1] drops Excel Row 2 ("Last Price")
+    # 1. Uncertainty Index
+    unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
     df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=0, skiprows=[1])
     
-    # Clean all column headers aggressively
     df_unc.columns = df_unc.columns.astype(str).str.replace(r'[\n\r\xa0]+', ' ', regex=True)
     df_unc.columns = df_unc.columns.str.replace(r'\s+', ' ', regex=True).str.strip()
-    
-    # Remove any duplicate column headers loaded from Excel
     df_unc = df_unc.loc[:, ~df_unc.columns.duplicated()]
     
-    # Set up Date index from Column A (index 0)
     date_col = df_unc.columns[0]
     df_unc = df_unc.rename(columns={date_col: "Date"})
     df_unc = df_unc.dropna(subset=["Date"])
-    df_unc["Date"] = pd.to_datetime(df_unc["Date"], dayfirst=True, errors="coerce")
+    df_unc["Date"] = pd.to_datetime(df_unc["Date"], dayfirst=True, errors="coerce").dt.normalize()
     df_unc = df_unc.dropna(subset=["Date"])
-    
-    # Deduplicate dates before setting index
     df_unc = df_unc.drop_duplicates(subset=["Date"], keep="last")
     df_unc = df_unc.set_index("Date")
 
@@ -90,7 +83,8 @@ def load_raw(data_dir: str) -> pd.DataFrame:
         cds_spread_col: "POLAND CDS USD SR 5Y Corp"
     })
     df_cds = df_cds.dropna(subset=["Date"])
-    df_cds["Date"] = pd.to_datetime(df_cds["Date"], dayfirst=True)
+    df_cds["Date"] = pd.to_datetime(df_cds["Date"], dayfirst=True).dt.normalize()
+    df_cds = df_cds.drop_duplicates(subset=["Date"], keep="last")
     df_cds = df_cds.set_index("Date")
 
     # 3. ASS Data
@@ -108,7 +102,8 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     ass_date_col = next((c for c in df_ass_spread.columns if "date" in c.lower() or "unnamed: 0" in c.lower()), df_ass_spread.columns[0])
     df_ass_spread = df_ass_spread.rename(columns={ass_date_col: "Date"})
     df_ass_spread = df_ass_spread.dropna(subset=["Date"])
-    df_ass_spread["Date"] = pd.to_datetime(df_ass_spread["Date"], dayfirst=True)
+    df_ass_spread["Date"] = pd.to_datetime(df_ass_spread["Date"], dayfirst=True).dt.normalize()
+    df_ass_spread = df_ass_spread.drop_duplicates(subset=["Date"], keep="last")
     df_ass_spread = df_ass_spread.set_index("Date")
 
     # 3b. Poland 10-Year Bond Yield Histo Sheet
@@ -124,10 +119,11 @@ def load_raw(data_dir: str) -> pd.DataFrame:
             bond_yield_col: "GTPLN10Y Govt.1"
         })
     df_ass_bond = df_ass_bond.dropna(subset=["Date"])
-    df_ass_bond["Date"] = pd.to_datetime(df_ass_bond["Date"], dayfirst=True)
+    df_ass_bond["Date"] = pd.to_datetime(df_ass_bond["Date"], dayfirst=True).dt.normalize()
+    df_ass_bond = df_ass_bond.drop_duplicates(subset=["Date"], keep="last")
     df_ass_bond = df_ass_bond.set_index("Date")
 
-    # Combine internal ASS sheets
+    # Combine internal ASS sheets safely
     df_ass = df_ass_spread.join(df_ass_bond, how="outer", rsuffix="_bond")
 
     # Clean up unneeded metadata columns before merging
@@ -135,8 +131,10 @@ def load_raw(data_dir: str) -> pd.DataFrame:
         unnamed = [c for c in frame.columns if "Unnamed:" in str(c)]
         frame.drop(columns=unnamed, inplace=True, errors="ignore")
 
-    # Final inner join across all datasets
-    df = df_cds.join([df_ass, df_unc], how="inner")
+    # Robust sequential inner join to prevent column dropping
+    df = df_cds.join(df_ass, how="inner").join(df_unc, how="inner")
+    
+    print(f"[debug] Successfully merged raw data. Shape: {df.shape}")
     return df.sort_index()
     
 
