@@ -116,6 +116,10 @@ def main():
     feature_cols = [c for c in FEATURE_COLS if c in frame.columns]
     lagged = add_lags(frame, feature_cols)
     full = add_targets(lagged, TARGET_COL, HORIZONS)
+    
+    # Drop rows at the tail where the h=30 shift created NaNs
+    target_cols = [f"target_h{h}" for h in HORIZONS]
+    full = full.dropna(subset=target_cols)
 
     # Standardize features on train split only (2013-2022), applied to all.
     train_mask = (full.index >= "2013-01-01") & (full.index <= "2022-12-31")
