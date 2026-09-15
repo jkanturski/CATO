@@ -46,96 +46,35 @@ LAGS = [1, 5, 20]
 HORIZONS = [1, 7, 30]
 
 def load_raw(data_dir: str) -> pd.DataFrame:
-    """Load and align all source files via robust inner join with normalized dates."""
-    
-    # 1. Uncertainty Index
+    """Load the master Uncertainty Index dataset containing all features and target."""
     unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
+    
+    # header=0 reads Excel Row 1 as column names; skiprows=[1] drops Excel Row 2 ("Last Price")
     df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=0, skiprows=[1])
     
+    # Clean all column headers aggressively
     df_unc.columns = df_unc.columns.astype(str).str.replace(r'[\n\r\xa0]+', ' ', regex=True)
     df_unc.columns = df_unc.columns.str.replace(r'\s+', ' ', regex=True).str.strip()
+    
+    # Remove any duplicate column headers loaded from Excel
     df_unc = df_unc.loc[:, ~df_unc.columns.duplicated()]
     
+    # Set up Date index from Column A (index 0)
     date_col = df_unc.columns[0]
     df_unc = df_unc.rename(columns={date_col: "Date"})
     df_unc = df_unc.dropna(subset=["Date"])
     df_unc["Date"] = pd.to_datetime(df_unc["Date"], dayfirst=True, errors="coerce").dt.normalize()
     df_unc = df_unc.dropna(subset=["Date"])
+    
+    # Deduplicate dates before setting index
     df_unc = df_unc.drop_duplicates(subset=["Date"], keep="last")
     df_unc = df_unc.set_index("Date")
 
-    # 2. CDS Poland
-    cds_path = os.path.join(data_dir, "CDS Poland.xlsx")
-    df_cds = pd.read_excel(cds_path, header=2)
-    df_cds.columns = df_cds.columns.astype(str).str.strip()
-    
-    cds_date_col = next((c for c in df_cds.columns if "timestamp" in c.lower() or "date" in c.lower()), None)
-    cds_spread_col = next((c for c in df_cds.columns if "mid_spread" in c.lower() or "spread" in c.lower()), None)
-    
-    if not cds_spread_col or not cds_date_col:
-        raise KeyError(
-            f"Could not locate CDS target columns in {cds_path}. "
-            f"Detected headers: {list(df_cds.columns)}"
-        )
-        
-    df_cds = df_cds.rename(columns={
-        cds_date_col: "Date",
-        cds_spread_col: "POLAND CDS USD SR 5Y Corp"
-    })
-    df_cds = df_cds.dropna(subset=["Date"])
-    df_cds["Date"] = pd.to_datetime(df_cds["Date"], dayfirst=True).dt.normalize()
-    df_cds = df_cds.drop_duplicates(subset=["Date"], keep="last")
-    df_cds = df_cds.set_index("Date")
+    # Drop unneeded metadata or unnamed columns
+    unnamed = [c for c in df_unc.columns if "Unnamed:" in str(c)]
+    df_unc.drop(columns=unnamed, inplace=True, errors="ignore")
 
-    # 3. ASS Data
-    ass_path = os.path.join(data_dir, "ASS.xlsx")
-    excel_file = pd.ExcelFile(ass_path)
-    sheet_names = excel_file.sheet_names
-
-    spread_sheet = next((s for s in sheet_names if "swap" in s.lower() or "spead" in s.lower()), sheet_names[0])
-    bond_sheet = next((s for s in sheet_names if "bond" in s.lower() or "10-year" in s.lower()), sheet_names[1])
-
-    # 3a. Asset Swap Spread Sheet
-    df_ass_spread = pd.read_excel(excel_file, sheet_name=spread_sheet)
-    df_ass_spread.columns = df_ass_spread.columns.astype(str).str.strip()
-    
-    ass_date_col = next((c for c in df_ass_spread.columns if "date" in c.lower() or "unnamed: 0" in c.lower()), df_ass_spread.columns[0])
-    df_ass_spread = df_ass_spread.rename(columns={ass_date_col: "Date"})
-    df_ass_spread = df_ass_spread.dropna(subset=["Date"])
-    df_ass_spread["Date"] = pd.to_datetime(df_ass_spread["Date"], dayfirst=True).dt.normalize()
-    df_ass_spread = df_ass_spread.drop_duplicates(subset=["Date"], keep="last")
-    df_ass_spread = df_ass_spread.set_index("Date")
-
-    # 3b. Poland 10-Year Bond Yield Histo Sheet
-    df_ass_bond = pd.read_excel(excel_file, sheet_name=bond_sheet)
-    df_ass_bond.columns = df_ass_bond.columns.astype(str).str.strip()
-    
-    bond_date_col = next((c for c in df_ass_bond.columns if "data" in c.lower() or "date" in c.lower()), None)
-    bond_yield_col = next((c for c in df_ass_bond.columns if "ostatnio" in c.lower() or "close" in c.lower() or "mid" in c.lower()), None)
-    
-    if bond_date_col and bond_yield_col:
-        df_ass_bond = df_ass_bond.rename(columns={
-            bond_date_col: "Date",
-            bond_yield_col: "GTPLN10Y Govt.1"
-        })
-    df_ass_bond = df_ass_bond.dropna(subset=["Date"])
-    df_ass_bond["Date"] = pd.to_datetime(df_ass_bond["Date"], dayfirst=True).dt.normalize()
-    df_ass_bond = df_ass_bond.drop_duplicates(subset=["Date"], keep="last")
-    df_ass_bond = df_ass_bond.set_index("Date")
-
-    # Combine internal ASS sheets safely
-    df_ass = df_ass_spread.join(df_ass_bond, how="outer", rsuffix="_bond")
-
-    # Clean up unneeded metadata columns before merging
-    for frame in [df_cds, df_ass, df_unc]:
-        unnamed = [c for c in frame.columns if "Unnamed:" in str(c)]
-        frame.drop(columns=unnamed, inplace=True, errors="ignore")
-
-    # Robust sequential inner join to prevent column dropping
-    df = df_cds.join(df_ass, how="inner").join(df_unc, how="inner")
-    
-    print(f"[debug] Successfully merged raw data. Shape: {df.shape}")
-    return df.sort_index()
+    return df_unc.sort_index()
     
 
 def build_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
