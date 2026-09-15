@@ -45,14 +45,15 @@ FEATURE_COLS = [
 LAGS = [1, 5, 20]
 HORIZONS = [1, 7, 30]
 
-
 def load_raw(data_dir: str) -> pd.DataFrame:
-    """Load and align all three source files via inner join."""
+    """Load and align all source files via inner join using dynamic header matching."""
     # 1. Uncertainty Index
     unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
     df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=0, skiprows=[1])
     df_unc.columns = df_unc.columns.astype(str).str.strip()
-    df_unc = df_unc.rename(columns={"Unnamed: 0": "Date"}).set_index("Date")
+    
+    date_col_unc = next((c for c in df_unc.columns if "date" in c.lower() or "unnamed: 0" in c.lower()), df_unc.columns[0])
+    df_unc = df_unc.rename(columns={date_col_unc: "Date"}).set_index("Date")
     df_unc.index = pd.to_datetime(df_unc.index)
 
     # 2. CDS Poland
@@ -60,9 +61,18 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     df_cds = pd.read_excel(cds_path, header=2)
     df_cds.columns = df_cds.columns.astype(str).str.strip()
     
+    cds_date_col = next((c for c in df_cds.columns if "timestamp" in c.lower() or "date" in c.lower()), None)
+    cds_spread_col = next((c for c in df_cds.columns if "mid_spread" in c.lower() or "spread" in c.lower()), None)
+    
+    if not cds_spread_col or not cds_date_col:
+        raise KeyError(
+            f"Could not locate CDS target columns in {cds_path}. "
+            f"Detected headers: {list(df_cds.columns)}"
+        )
+        
     df_cds = df_cds.rename(columns={
-        "Timestamp": "Date",
-        "MID_SPREAD": "POLAND CDS USD SR 5Y Corp"
+        cds_date_col: "Date",
+        cds_spread_col: "POLAND CDS USD SR 5Y Corp"
     })
     df_cds = df_cds.dropna(subset=["Date"])
     df_cds["Date"] = pd.to_datetime(df_cds["Date"], dayfirst=True)
@@ -79,10 +89,9 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     # 3a. Asset Swap Spread Sheet
     df_ass_spread = pd.read_excel(excel_file, sheet_name=spread_sheet)
     df_ass_spread.columns = df_ass_spread.columns.astype(str).str.strip()
-    df_ass_spread = df_ass_spread.rename(columns={
-        "Unnamed: 0": "Date", 
-        "Unnamed: 3": "Calculated Spread"
-    })
+    
+    ass_date_col = next((c for c in df_ass_spread.columns if "date" in c.lower() or "unnamed: 0" in c.lower()), df_ass_spread.columns[0])
+    df_ass_spread = df_ass_spread.rename(columns={ass_date_col: "Date"})
     df_ass_spread = df_ass_spread.dropna(subset=["Date"])
     df_ass_spread["Date"] = pd.to_datetime(df_ass_spread["Date"], dayfirst=True)
     df_ass_spread = df_ass_spread.set_index("Date")
@@ -90,10 +99,15 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     # 3b. Poland 10-Year Bond Yield Histo Sheet
     df_ass_bond = pd.read_excel(excel_file, sheet_name=bond_sheet)
     df_ass_bond.columns = df_ass_bond.columns.astype(str).str.strip()
-    df_ass_bond = df_ass_bond.rename(columns={
-        "Data": "Date", 
-        "Ostatnio": "GTPLN10Y Govt.1"  
-    })
+    
+    bond_date_col = next((c for c in df_ass_bond.columns if "data" in c.lower() or "date" in c.lower()), None)
+    bond_yield_col = next((c for c in df_ass_bond.columns if "ostatnio" in c.lower() or "close" in c.lower() or "mid" in c.lower()), None)
+    
+    if bond_date_col and bond_yield_col:
+        df_ass_bond = df_ass_bond.rename(columns={
+            bond_date_col: "Date",
+            bond_yield_col: "GTPLN10Y Govt.1"
+        })
     df_ass_bond = df_ass_bond.dropna(subset=["Date"])
     df_ass_bond["Date"] = pd.to_datetime(df_ass_bond["Date"], dayfirst=True)
     df_ass_bond = df_ass_bond.set_index("Date")
@@ -101,7 +115,7 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     # Combine internal ASS sheets
     df_ass = df_ass_spread.join(df_ass_bond, how="outer", rsuffix="_bond")
 
-    # Clean up unneeded metadata columns before merging to prevent join collisions
+    # Clean up unneeded metadata columns before merging
     for frame in [df_cds, df_ass, df_unc]:
         unnamed = [c for c in frame.columns if "Unnamed:" in str(c)]
         frame.drop(columns=unnamed, inplace=True, errors="ignore")
@@ -109,7 +123,7 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     # Final inner join across all datasets
     df = df_cds.join([df_ass, df_unc], how="inner")
     return df.sort_index()
-
+    
 
 def build_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     """Select target + curated features, forward-fill to business days."""
