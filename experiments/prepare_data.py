@@ -47,14 +47,26 @@ HORIZONS = [1, 7, 30]
 
 def load_raw(data_dir: str) -> pd.DataFrame:
     """Load and align all source files via inner join using dynamic header matching."""
-    # 1. Uncertainty Index
+    # 1. Uncertainty Index 
     unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
-    df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=0, skiprows=[1])
+    
+    # header=3 tells Pandas to use Excel Row 4 as the column names (0-indexed)
+    df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=3)
+    
+    # Cell A4 is blank, so Pandas names it 'Unnamed: 0'. Rename it to 'Date'.
+    df_unc = df_unc.rename(columns={df_unc.columns[0]: "Date"})
+    
+    # Excel Row 5 contains the string 'Dates' in column A. We need to filter it out.
+    df_unc = df_unc[df_unc["Date"] != "Dates"]
+    
+    # Clean the headers just in case there are trailing spaces
     df_unc.columns = df_unc.columns.astype(str).str.strip()
     
-    date_col_unc = next((c for c in df_unc.columns if "date" in c.lower() or "unnamed: 0" in c.lower()), df_unc.columns[0])
-    df_unc = df_unc.rename(columns={date_col_unc: "Date"}).set_index("Date")
-    df_unc.index = pd.to_datetime(df_unc.index)
+    # Drop rows with missing dates, convert to datetime, and set the index
+    df_unc = df_unc.dropna(subset=["Date"])
+    df_unc["Date"] = pd.to_datetime(df_unc["Date"], errors='coerce', dayfirst=True)
+    df_unc = df_unc.dropna(subset=["Date"]) # Drops any garbage rows that couldn't be parsed
+    df_unc = df_unc.set_index("Date")
 
     # 2. CDS Poland
     cds_path = os.path.join(data_dir, "CDS Poland.xlsx")
