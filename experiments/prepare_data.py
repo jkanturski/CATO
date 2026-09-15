@@ -104,6 +104,9 @@ def load_raw(data_dir: str) -> pd.DataFrame:
 
     # Combine internal ASS sheets
     df_ass = df_ass_spread.join(df_ass_bond, how="outer")
+
+    # Inner join resolves Polish/US/German holiday misalignment natively
+    df = df_cds.join([df_ass, df_unc], how="inner")
     
     return df.sort_index()
 
