@@ -75,10 +75,34 @@ def load_raw(data_dir: str) -> pd.DataFrame:
 
     # ASS
     ass_path = os.path.join(data_dir, "ASS.xlsx")
-    df_ass = pd.read_excel(ass_path, parse_dates=["Date"]).set_index("Date")
+    
+    # 1. Load "Asset swap spread"
+    df_ass_spread = pd.read_excel(ass_path, sheet_name="Asset swap spread")
+    
+    # Fix the missing headers based on the column indices in the image
+    df_ass_spread = df_ass_spread.rename(columns={
+        "Unnamed: 0": "Date", 
+        "Unnamed: 3": "Calculated Spread"
+    })
+    df_ass_spread = df_ass_spread.dropna(subset=["Date"])
+    df_ass_spread["Date"] = pd.to_datetime(df_ass_spread["Date"], dayfirst=True)
+    df_ass_spread = df_ass_spread.set_index("Date")
 
-    # Inner join resolves Polish/US/German holiday misalignment natively
-    df = df_cds.join([df_ass, df_unc], how="inner")
+    # 2. Load "Poland 10-Year Bond Yield Histo" 
+    df_ass_bond = pd.read_excel(ass_path, sheet_name="Poland 10-Year Bond Yield Histo")
+    
+    # Rename 'Data' to 'Date', and map 'Ostatnio' to your target 10Y feature
+    df_ass_bond = df_ass_bond.rename(columns={
+        "Data": "Date", 
+        "Ostatnio": "GTPLN10Y Govt.1"  
+    })
+    df_ass_bond = df_ass_bond.dropna(subset=["Date"])
+    df_ass_bond["Date"] = pd.to_datetime(df_ass_bond["Date"], dayfirst=True)
+    df_ass_bond = df_ass_bond.set_index("Date")
+
+    # Combine the internal ASS sheets together before joining with CDS and Uncertainty
+    df_ass = df_ass_spread.join(df_ass_bond, how="outer")
+    
     return df.sort_index()
 
 
