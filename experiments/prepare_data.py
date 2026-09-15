@@ -126,11 +126,13 @@ def main():
     val_mask = (full.index >= "2023-01-01") & (full.index <= "2023-12-31")
     test_mask = full.index >= "2024-01-01"
 
-    feature_lag_cols = [c for c in full.columns if "_lag" in c]
-    mu = full.loc[train_mask, feature_lag_cols].mean()
-    sigma = full.loc[train_mask, feature_lag_cols].std().replace(0, 1.0)
-    full[feature_lag_cols] = (full[feature_lag_cols] - mu) / sigma
-
+    # Scale BOTH the base features and their lags to prevent exploding gradients
+    cols_to_scale = feature_cols + [c for c in full.columns if "_lag" in c]
+    
+    mu = full.loc[train_mask, cols_to_scale].mean()
+    sigma = full.loc[train_mask, cols_to_scale].std().replace(0, 1.0)
+    full[cols_to_scale] = (full[cols_to_scale] - mu) / sigma
+    
     full.loc[train_mask].to_parquet(os.path.join(args.out_dir, "train.parquet"))
     full.loc[val_mask].to_parquet(os.path.join(args.out_dir, "val.parquet"))
     full.loc[test_mask].to_parquet(os.path.join(args.out_dir, "test.parquet"))
