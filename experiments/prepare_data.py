@@ -48,42 +48,37 @@ HORIZONS = [1, 7, 30]
 
 def load_raw(data_dir: str) -> pd.DataFrame:
     """Load and align all three source files via inner join."""
-    # Uncertainty
+    # 1. Uncertainty Index
     unc_path = os.path.join(data_dir, "Uncertanty_index_data_23_07.xlsx")
     df_unc = pd.read_excel(unc_path, sheet_name="Copy", header=0, skiprows=[1])
+    df_unc.columns = df_unc.columns.astype(str).str.strip()
     df_unc = df_unc.rename(columns={"Unnamed: 0": "Date"}).set_index("Date")
     df_unc.index = pd.to_datetime(df_unc.index)
 
-    # CDS 
+    # 2. CDS Poland
     cds_path = os.path.join(data_dir, "CDS Poland.xlsx")
-    
-    # header=2 skips the first two metadata rows and uses row 3 as column headers
     df_cds = pd.read_excel(cds_path, header=2)
+    df_cds.columns = df_cds.columns.astype(str).str.strip()
     
-    # Rename the columns to match what the rest of your script expects
     df_cds = df_cds.rename(columns={
         "Timestamp": "Date",
         "MID_SPREAD": "POLAND CDS USD SR 5Y Corp"
     })
-    
-    # Drop any empty rows (like those created by empty columns A and B)
     df_cds = df_cds.dropna(subset=["Date"])
-    
-    # Parse the dates (dayfirst=True handles the DD.MM.YYYY format shown in your file)
     df_cds["Date"] = pd.to_datetime(df_cds["Date"], dayfirst=True)
     df_cds = df_cds.set_index("Date")
 
-    # ASS
+    # 3. ASS Data
     ass_path = os.path.join(data_dir, "ASS.xlsx")
     excel_file = pd.ExcelFile(ass_path)
     sheet_names = excel_file.sheet_names
 
-    # Match sheet names dynamically regardless of minor typos or trailing spaces
-    spread_sheet = next((s for s in sheet_names if "swap" in s.lower()), sheet_names[0])
+    spread_sheet = next((s for s in sheet_names if "swap" in s.lower() or "spead" in s.lower()), sheet_names[0])
     bond_sheet = next((s for s in sheet_names if "bond" in s.lower() or "10-year" in s.lower()), sheet_names[1])
 
-    # 1. Load Asset Swap Spread sheet
+    # 3a. Asset Swap Spread Sheet
     df_ass_spread = pd.read_excel(excel_file, sheet_name=spread_sheet)
+    df_ass_spread.columns = df_ass_spread.columns.astype(str).str.strip()
     df_ass_spread = df_ass_spread.rename(columns={
         "Unnamed: 0": "Date", 
         "Unnamed: 3": "Calculated Spread"
@@ -92,8 +87,9 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     df_ass_spread["Date"] = pd.to_datetime(df_ass_spread["Date"], dayfirst=True)
     df_ass_spread = df_ass_spread.set_index("Date")
 
-    # 2. Load Poland 10-Year Bond Yield Histo sheet
+    # 3b. Poland 10-Year Bond Yield Histo Sheet
     df_ass_bond = pd.read_excel(excel_file, sheet_name=bond_sheet)
+    df_ass_bond.columns = df_ass_bond.columns.astype(str).str.strip()
     df_ass_bond = df_ass_bond.rename(columns={
         "Data": "Date", 
         "Ostatnio": "GTPLN10Y Govt.1"  
@@ -103,11 +99,15 @@ def load_raw(data_dir: str) -> pd.DataFrame:
     df_ass_bond = df_ass_bond.set_index("Date")
 
     # Combine internal ASS sheets
-    df_ass = df_ass_spread.join(df_ass_bond, how="outer")
+    df_ass = df_ass_spread.join(df_ass_bond, how="outer", rsuffix="_bond")
 
-    # Inner join resolves Polish/US/German holiday misalignment natively
+    # Clean up unneeded metadata columns before merging to prevent join collisions
+    for frame in [df_cds, df_ass, df_unc]:
+        unnamed = [c for c in frame.columns if "Unnamed:" in str(c)]
+        frame.drop(columns=unnamed, inplace=True, errors="ignore")
+
+    # Final inner join across all datasets
     df = df_cds.join([df_ass, df_unc], how="inner")
-    
     return df.sort_index()
 
 
