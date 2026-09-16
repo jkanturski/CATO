@@ -74,7 +74,7 @@ def run_horizon(train, val, test, h):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data-dir", default="/Users/rklopotek/CATO/Poprad_2026/experiments/data"
+        "--data-dir", default="/home/jkanturski/CATO/experiments/data"
     )
     args = parser.parse_args()
 
