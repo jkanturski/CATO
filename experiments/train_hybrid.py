@@ -231,7 +231,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--horizon", type=int, required=True, choices=[1, 7, 30])
     parser.add_argument("--data-dir",
-                         default="/Users/rklopotek/CATO/Poprad_2026/experiments/data")
+                         default="/home/jkanturski/CATO/experiments/data")
     parser.add_argument("--lookback", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=100)
@@ -242,4 +242,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
