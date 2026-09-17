@@ -1,6 +1,6 @@
 #!/bin/bash
 #BSUB -J "poprad_cds_deep"
-#BSUB -q night
+#BSUB -q normal
 #BSUB -n 12
 #BSUB -R "span[ptile=2]"
 #BSUB -gpu "num=2:mode=exclusive_process:j_exclusive=yes"
