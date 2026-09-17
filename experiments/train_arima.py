@@ -60,11 +60,10 @@ def run_horizon(train, val, test, h):
     return result
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data-dir", default="/Users/rklopotek/CATO/Poprad_2026/experiments/data"
+        "--data-dir", default="/home/jkanturski/CATO/experiments/data"
     )
     args = parser.parse_args()
 
@@ -80,4 +79,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
