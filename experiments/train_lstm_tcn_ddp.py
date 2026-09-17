@@ -158,17 +158,16 @@ def main():
     parser.add_argument("--model", choices=["lstm", "tcn"], required=True)
     parser.add_argument("--horizon", type=int, required=True, choices=[1, 7, 30])
     parser.add_argument("--data-dir",
-                         default="/Users/rklopotek/CATO/Poprad_2026/experiments/data")
+                         default="/home/jkanturski/CATO/experiments/data")
     parser.add_argument("--lookback", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--out-dir",
-                         default="/Users/rklopotek/CATO/Poprad_2026/experiments/checkpoints")
+                         default="/home/jkanturski/CATO/experiments/checkpoints")
     args = parser.parse_args()
     run_horizon(args)
 
 
 if __name__ == "__main__":
     main()
-
