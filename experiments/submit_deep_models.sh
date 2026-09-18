@@ -19,9 +19,9 @@
 # #BSUB -n / -R / -gpu values (1 GPU/1 node, 2 GPU/1 node, 4 GPU/2 nodes,
 # 12 GPU/6 nodes) and record wall-clock time from the LSF job log.
 
-MODEL=lstm          # one of: lstm, tcn (used only when SCRIPT=train_lstm_tcn_ddp.py)
+MODEL=tcn          # one of: lstm, tcn (used only when SCRIPT=train_lstm_tcn_ddp.py)
 HORIZON=1          # one of: 1, 7, 30
-SCRIPT=train_arima.py   # train_lstm_tcn_ddp.py (lstm/tcn) or train_hybrid.py
+SCRIPT=train_lstm_tcn_ddp.py   # train_lstm_tcn_ddp.py (lstm/tcn) or train_hybrid.py
 EXTRA_ARGS="--model $MODEL --horizon $HORIZON"   # for train_hybrid.py, use "--horizon $HORIZON" only
 
 module purge
