@@ -125,12 +125,8 @@ def train_tcn_phase(args, raw_feature_cols, device, distributed, local_rank, glo
 
     return model
 
-
-
-def extract_embeddings(model, dataset, device, distributed, batch_size=256):
-    """Run the trained TCN in eval mode over `dataset`, returning
-    (embeddings, targets) numpy arrays local to this rank, then
-    all_gather across ranks if distributed."""
+def extract_embeddings(model, dataset, device, batch_size=256):
+    """Run model in eval mode on Rank 0 without DDP duplication."""
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     backbone = model.module if isinstance(model, DDP) else model
     backbone.eval()
@@ -140,25 +136,10 @@ def extract_embeddings(model, dataset, device, distributed, batch_size=256):
         for x, y in loader:
             x = x.to(device)
             _, emb = backbone(x, return_embedding=True)
-            embeds.append(emb.cpu())
-            targets.append(y)
-    local_embeds = (torch.cat(embeds, dim=0) if embeds
-                     else torch.empty(0, backbone.embedding_dim))
-    local_targets = torch.cat(targets, dim=0) if targets else torch.empty(0)
+            embeds.append(emb.cpu().numpy())
+            targets.append(y.numpy())
 
-    if distributed:
-        world_size = dist.get_world_size()
-        gathered_embeds = [torch.zeros_like(local_embeds) for _ in range(world_size)]
-        gathered_targets = [torch.zeros_like(local_targets) for _ in range(world_size)]
-        dist.all_gather(gathered_embeds, local_embeds)
-        dist.all_gather(gathered_targets, local_targets)
-        embeds_out = torch.cat(gathered_embeds, dim=0).numpy()
-        targets_out = torch.cat(gathered_targets, dim=0).numpy()
-    else:
-        embeds_out = local_embeds.numpy()
-        targets_out = local_targets.numpy()
-
-    return embeds_out, targets_out
+    return np.concatenate(embeds, axis=0), np.concatenate(targets, axis=0)
 
 
 def run_horizon(args):
@@ -192,13 +173,16 @@ def run_horizon(args):
     test_emb, test_y = extract_embeddings(model, test_ds, device, distributed)
 
     if distributed:
-        dist.barrier()
+        dist.barrier()  # Synchronize all ranks after Phase 1 TCN training
 
     result = None
     if global_rank == 0:
+        # Rank 0 extracts embeddings locally (no 6x duplication)
+		train_emb, train_y = extract_embeddings(model, train_ds, device)
+		test_emb, test_y = extract_embeddings(model, test_ds, device)
+
         extra_cols = [c for c in RAW_LAG1_EXTRA if c in sample.columns]
-        train_extra = pd.read_parquet(
-            os.path.join(args.data_dir, "train.parquet"))[extra_cols]
+        train_extra = pd.read_parquet(os.path.join(args.data_dir, "train.parquet"))[extra_cols]
         test_extra_df = pd.read_parquet(os.path.join(args.data_dir, "test.parquet"))
         test_extra = test_extra_df[extra_cols]
 
@@ -206,6 +190,11 @@ def run_horizon(args):
         off = args.lookback - 1
         train_extra_arr = train_extra.to_numpy()[off: off + n_train]
         test_extra_arr = test_extra.to_numpy()[off: off + n_test]
+
+        assert train_emb.shape[0] == train_extra_arr.shape[0], (
+            f"Row mismatch: train_emb has {train_emb.shape[0]} rows, "
+            f"while train_extra_arr has {train_extra_arr.shape[0]} rows."
+        )
 
         X_train = np.concatenate([train_emb, train_extra_arr], axis=1)
         X_test = np.concatenate([test_emb, test_extra_arr], axis=1)
@@ -215,13 +204,12 @@ def run_horizon(args):
         reg.fit(X_train, train_y)
         test_pred = reg.predict(X_test)
 
-        # y_prev for directional accuracy: raw CDS 5Y value at the last
-        # lookback timestamp, aligned the same way as the extra features.
         y_prev = test_extra_df["POLAND CDS USD SR 5Y Corp"].to_numpy()[off: off + n_test]
         result = all_metrics(y_prev, test_y, test_pred)
         print(f"[hybrid h={args.horizon}] test metrics: {result}")
 
     if distributed:
+        dist.barrier()  # Keep non-zero ranks alive until Rank 0 completes Phase 2
         dist.destroy_process_group()
 
     return result
