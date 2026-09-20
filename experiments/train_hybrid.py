@@ -3,7 +3,7 @@ train_hybrid.py — DDP-trained TCN feature extractor + XGBoost regressor
 for Poland CDS 5Y forecasting (Section III.E and Fig. 1 of paper.tex).
 
 Phase 1: train the TCN backbone under PyTorch DDP (mirrors the earlier
-prototype /Users/rklopotek/CATO/train_hybrid.py, extended from synthetic
+prototype /home/jkanturski/CATO/experiments/train_hybrid.py, extended from synthetic
 data to the real CDS dataset and from a single forward pass to full
 training), with early stopping on validation RMSE (mirrors
 train_lstm_tcn_ddp.py) to avoid overfitting the TCN backbone before
