@@ -1,0 +1,153 @@
+Sender: LSF System <lsfadmin@cn06.ai.cato.cnt.uksw.edu.pl>
+Subject: Job 74507: <train_2gpu_1node> in cluster <cato> Done
+
+Job <train_2gpu_1node> was submitted from host <ln02.ai.cato.cnt.uksw.edu.pl> by user <jkanturski> in cluster <cato> at Mon Sep 21 15:38:07 2026
+Job was executed on host(s) <2*cn06.ai.cato.cnt.uksw.edu.pl>, in queue <short>, as user <jkanturski> in cluster <cato> at Mon Sep 21 15:38:07 2026
+</home/jkanturski> was used as the home directory.
+</home/jkanturski/CATO/experiments> was used as the working directory.
+Started at Mon Sep 21 15:38:07 2026
+Terminated at Mon Sep 21 15:38:43 2026
+Results reported at Mon Sep 21 15:38:43 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -J train_2gpu_1node
+#BSUB -n 2
+#BSUB -R "span[ptile=2]"
+#BSUB -gpu "num=2:mode=exclusive_process"
+#BSUB -q short
+#BSUB -o train_2gpu_1node.%J.log
+#BSUB -e train_2gpu_1node.%J.err
+
+# Added --model flag and updated script name
+torchrun --standalone --nnodes=1 --nproc_per_node=2 train_lstm_tcn_ddp.py --model lstm --horizon 1
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   25.96 sec.
+    Max Memory :                                 4136 MB
+    Average Memory :                             2060.71 MB
+    Total Requested Memory :                     -
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              6
+    Max Threads :                                137
+    Run time :                                   35 sec.
+    Turnaround time :                            36 sec.
+
+The output (if any) follows:
+
+[lstm h=1] epoch 0: val RMSE=40.7601
+[lstm h=1] epoch 1: val RMSE=39.9301
+[lstm h=1] epoch 2: val RMSE=38.1197
+[lstm h=1] epoch 3: val RMSE=36.3419
+[lstm h=1] epoch 4: val RMSE=35.0000
+[lstm h=1] epoch 5: val RMSE=34.1475
+[lstm h=1] epoch 6: val RMSE=33.4447
+[lstm h=1] epoch 7: val RMSE=32.7937
+[lstm h=1] epoch 8: val RMSE=32.1735
+[lstm h=1] epoch 9: val RMSE=31.5758
+[lstm h=1] epoch 10: val RMSE=30.9865
+[lstm h=1] epoch 11: val RMSE=30.3960
+[lstm h=1] epoch 12: val RMSE=29.8165
+[lstm h=1] epoch 13: val RMSE=29.2551
+[lstm h=1] epoch 14: val RMSE=28.7073
+[lstm h=1] epoch 15: val RMSE=28.1680
+[lstm h=1] epoch 16: val RMSE=27.6407
+[lstm h=1] epoch 17: val RMSE=27.1178
+[lstm h=1] epoch 18: val RMSE=26.6047
+[lstm h=1] epoch 19: val RMSE=26.0996
+[lstm h=1] epoch 20: val RMSE=25.6004
+[lstm h=1] epoch 21: val RMSE=25.1060
+[lstm h=1] epoch 22: val RMSE=24.6190
+[lstm h=1] epoch 23: val RMSE=24.1372
+[lstm h=1] epoch 24: val RMSE=23.6597
+[lstm h=1] epoch 25: val RMSE=23.1899
+[lstm h=1] epoch 26: val RMSE=22.7247
+[lstm h=1] epoch 27: val RMSE=22.2632
+[lstm h=1] epoch 28: val RMSE=21.8048
+[lstm h=1] epoch 29: val RMSE=21.3522
+[lstm h=1] epoch 30: val RMSE=20.9062
+[lstm h=1] epoch 31: val RMSE=20.4670
+[lstm h=1] epoch 32: val RMSE=20.0318
+[lstm h=1] epoch 33: val RMSE=19.5975
+[lstm h=1] epoch 34: val RMSE=19.1690
+[lstm h=1] epoch 35: val RMSE=18.7460
+[lstm h=1] epoch 36: val RMSE=18.3290
+[lstm h=1] epoch 37: val RMSE=17.9149
+[lstm h=1] epoch 38: val RMSE=17.5065
+[lstm h=1] epoch 39: val RMSE=17.1029
+[lstm h=1] epoch 40: val RMSE=16.7034
+[lstm h=1] epoch 41: val RMSE=16.3088
+[lstm h=1] epoch 42: val RMSE=15.9177
+[lstm h=1] epoch 43: val RMSE=15.5314
+[lstm h=1] epoch 44: val RMSE=15.1482
+[lstm h=1] epoch 45: val RMSE=14.7744
+[lstm h=1] epoch 46: val RMSE=14.4008
+[lstm h=1] epoch 47: val RMSE=14.0370
+[lstm h=1] epoch 48: val RMSE=13.6732
+[lstm h=1] epoch 49: val RMSE=13.3168
+[lstm h=1] epoch 50: val RMSE=12.9671
+[lstm h=1] epoch 51: val RMSE=12.6203
+[lstm h=1] epoch 52: val RMSE=12.2793
+[lstm h=1] epoch 53: val RMSE=11.9416
+[lstm h=1] epoch 54: val RMSE=11.6093
+[lstm h=1] epoch 55: val RMSE=11.2861
+[lstm h=1] epoch 56: val RMSE=10.9644
+[lstm h=1] epoch 57: val RMSE=10.6497
+[lstm h=1] epoch 58: val RMSE=10.3397
+[lstm h=1] epoch 59: val RMSE=10.0360
+[lstm h=1] epoch 60: val RMSE=9.7391
+[lstm h=1] epoch 61: val RMSE=9.4491
+[lstm h=1] epoch 62: val RMSE=9.1641
+[lstm h=1] epoch 63: val RMSE=8.8858
+[lstm h=1] epoch 64: val RMSE=8.6169
+[lstm h=1] epoch 65: val RMSE=8.3526
+[lstm h=1] epoch 66: val RMSE=8.0960
+[lstm h=1] epoch 67: val RMSE=7.8480
+[lstm h=1] epoch 68: val RMSE=7.6047
+[lstm h=1] epoch 69: val RMSE=7.3723
+[lstm h=1] epoch 70: val RMSE=7.1475
+[lstm h=1] epoch 71: val RMSE=6.9319
+[lstm h=1] epoch 72: val RMSE=6.7256
+[lstm h=1] epoch 73: val RMSE=6.5288
+[lstm h=1] epoch 74: val RMSE=6.3419
+[lstm h=1] epoch 75: val RMSE=6.1666
+[lstm h=1] epoch 76: val RMSE=6.0015
+[lstm h=1] epoch 77: val RMSE=5.8477
+[lstm h=1] epoch 78: val RMSE=5.7060
+[lstm h=1] epoch 79: val RMSE=5.5760
+[lstm h=1] epoch 80: val RMSE=5.4575
+[lstm h=1] epoch 81: val RMSE=5.3531
+[lstm h=1] epoch 82: val RMSE=5.2605
+[lstm h=1] epoch 83: val RMSE=5.1821
+[lstm h=1] epoch 84: val RMSE=5.1177
+[lstm h=1] epoch 85: val RMSE=5.0656
+[lstm h=1] epoch 86: val RMSE=5.0269
+[lstm h=1] epoch 87: val RMSE=5.0009
+[lstm h=1] epoch 88: val RMSE=4.9874
+[lstm h=1] epoch 89: val RMSE=4.9861
+[lstm h=1] epoch 90: val RMSE=4.9964
+[lstm h=1] epoch 91: val RMSE=5.0179
+[lstm h=1] epoch 92: val RMSE=5.0505
+[lstm h=1] epoch 93: val RMSE=5.0923
+[lstm h=1] epoch 94: val RMSE=5.1442
+[lstm h=1] epoch 95: val RMSE=5.2031
+[lstm h=1] epoch 96: val RMSE=5.2715
+[lstm h=1] epoch 97: val RMSE=5.3467
+[lstm h=1] epoch 98: val RMSE=5.4287
+[lstm h=1] epoch 99: val RMSE=5.5151
+[lstm h=1] early stopping at epoch 99 (best val RMSE=4.9861)
+[lstm h=1] test metrics: {'rmse': 7.653717517852783, 'mae': 6.673983097076416, 'mape': 18.365678191184998, 'directional_accuracy': 0.49653979238754326, 'n': 578}
+
+
+PS:
+
+Read file <train_2gpu_1node.74507.err> for stderr output of this job.
+
