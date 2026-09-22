@@ -1,0 +1,301 @@
+Sender: LSF System <lsfadmin@cn06.ai.cato.cnt.uksw.edu.pl>
+Subject: Job 74515: <train_4gpu_2nodes> in cluster <cato> Done
+
+Job <train_4gpu_2nodes> was submitted from host <ln02.ai.cato.cnt.uksw.edu.pl> by user <jkanturski> in cluster <cato> at Tue Sep 22 13:29:53 2026
+Job was executed on host(s) <2*cn06.ai.cato.cnt.uksw.edu.pl>, in queue <short>, as user <jkanturski> in cluster <cato> at Tue Sep 22 13:29:53 2026
+                            <2*cn02.ai.cato.cnt.uksw.edu.pl>
+</home/jkanturski> was used as the home directory.
+</home/jkanturski/CATO/experiments> was used as the working directory.
+Started at Tue Sep 22 13:29:53 2026
+Terminated at Tue Sep 22 13:30:49 2026
+Results reported at Tue Sep 22 13:30:49 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -J train_4gpu_2nodes
+#BSUB -q short
+#BSUB -n 4
+#BSUB -R "span[ptile=2]"
+#BSUB -R "select[hname!='ln01' && hname!='ln02']"
+#BSUB -gpu "num=2:mode=exclusive_process:j_exclusive=yes"
+#BSUB -o train_4gpu_2nodes.%J.log
+#BSUB -e train_4gpu_2nodes.%J.err
+
+module purge
+module load compilers/nvidia/hpc_sdk/nompi/21.9
+
+# Master address = first host in allocation
+export MASTER_ADDR=$(echo $LSB_MCPU_HOSTS | awk '{print $1}')
+export MASTER_PORT=29505
+
+# Extract node list (skipping task counts)
+NODES=($(echo $LSB_MCPU_HOSTS | awk '{for(i=1;i<=NF;i+=2) print $i}'))
+NNODES=${#NODES[@]}
+
+echo "MASTER_ADDR=$MASTER_ADDR"
+echo "NNODES=$NNODES"
+echo "NODES=${NODES[@]}"
+
+for i in "${!NODES[@]}"; do
+    NODE=${NODES[$i]}
+
+    blaunch $NODE "
+        source /gpfs/catosys/opence/anaconda3/etc/profile.d/conda.sh && \
+        conda activate torch2_p9 && \
+        export NCCL_DEBUG=INFO && \
+        export NCCL_IB_DISABLE=0 && \
+        export NCCL_SOCKET_IFNAME=clpriv && \
+        export NCCL_ASYNC_ERROR_HANDLING=1 && \
+        cd $LS_SUBCWD && \
+        echo \"Starting node_rank=$i on $NODE\" && \
+        torchrun \
+            --nproc_per_node=2 \
+            --nnodes=$NNODES \
+            --node_rank=$i \
+            --rdzv_id=$LSB_JOBID \
+            --rdzv_backend=c10d \
+            --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
+            train_lstm_tcn_ddp.py --model lstm --horizon 1
+    " &
+done
+
+wait
+
+echo "Job completed."
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   60.00 sec.
+    Max Memory :                                 4158 MB
+    Average Memory :                             973.44 MB
+    Total Requested Memory :                     -
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              10
+    Max Threads :                                130
+    Run time :                                   48 sec.
+    Turnaround time :                            56 sec.
+
+The output (if any) follows:
+
+MASTER_ADDR=cn06.ai.cato.cnt.uksw.edu.pl
+NNODES=2
+NODES=cn06.ai.cato.cnt.uksw.edu.pl cn02.ai.cato.cnt.uksw.edu.pl
+Starting node_rank=0 on cn06.ai.cato.cnt.uksw.edu.pl
+Starting node_rank=1 on cn02.ai.cato.cnt.uksw.edu.pl
+cn02:860714:860714 [0] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn02:860714:860714 [0] NCCL INFO Bootstrap : Using clpriv:10.0.0.22<0>
+cn02:860714:860714 [0] NCCL INFO NET/Plugin : Plugin load (libnccl-net.so) returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory
+cn02:860714:860714 [0] NCCL INFO NET/Plugin : No plugin found, using internal implementation
+cn02:860714:860714 [0] NCCL INFO cudaDriverVersion 11060
+NCCL version 2.17.1+cuda11.8
+cn02:860715:860715 [1] NCCL INFO cudaDriverVersion 11060
+cn02:860715:860715 [1] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn02:860715:860715 [1] NCCL INFO Bootstrap : Using clpriv:10.0.0.22<0>
+cn02:860715:860715 [1] NCCL INFO NET/Plugin : Plugin load (libnccl-net.so) returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory
+cn02:860715:860715 [1] NCCL INFO NET/Plugin : No plugin found, using internal implementation
+cn06:2483641:2483641 [1] NCCL INFO cudaDriverVersion 11060
+cn06:2483640:2483640 [0] NCCL INFO cudaDriverVersion 11060
+cn06:2483640:2483640 [0] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn06:2483641:2483641 [1] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn06:2483640:2483640 [0] NCCL INFO Bootstrap : Using clpriv:10.0.0.26<0>
+cn06:2483641:2483641 [1] NCCL INFO Bootstrap : Using clpriv:10.0.0.26<0>
+cn06:2483640:2483640 [0] NCCL INFO NET/Plugin : Plugin load (libnccl-net.so) returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory
+cn06:2483641:2483641 [1] NCCL INFO NET/Plugin : Plugin load (libnccl-net.so) returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory
+cn06:2483640:2483640 [0] NCCL INFO NET/Plugin : No plugin found, using internal implementation
+cn06:2483641:2483641 [1] NCCL INFO NET/Plugin : No plugin found, using internal implementation
+cn02:860715:860842 [1] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
+cn06:2483640:2483770 [0] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
+cn06:2483641:2483771 [1] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
+cn02:860714:860843 [0] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
+cn02:860715:860842 [1] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn02:860714:860843 [0] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn06:2483640:2483770 [0] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn06:2483641:2483771 [1] NCCL INFO NCCL_SOCKET_IFNAME set by environment to clpriv
+cn06:2483641:2483771 [1] NCCL INFO NET/IB : Using [0]mlx5_2:1/IB ; OOB clpriv:10.0.0.26<0>
+cn06:2483641:2483771 [1] NCCL INFO Using network IB
+cn06:2483640:2483770 [0] NCCL INFO NET/IB : Using [0]mlx5_2:1/IB ; OOB clpriv:10.0.0.26<0>
+cn06:2483640:2483770 [0] NCCL INFO Using network IB
+cn02:860714:860843 [0] NCCL INFO NET/IB : Using [0]mlx5_2:1/IB ; OOB clpriv:10.0.0.22<0>
+cn02:860714:860843 [0] NCCL INFO Using network IB
+cn02:860715:860842 [1] NCCL INFO NET/IB : Using [0]mlx5_2:1/IB ; OOB clpriv:10.0.0.22<0>
+cn02:860715:860842 [1] NCCL INFO Using network IB
+cn02:860714:860843 [0] NCCL INFO Setting affinity for GPU 0 to ffffffff,ffffffff
+cn02:860715:860842 [1] NCCL INFO Setting affinity for GPU 1 to ffffffff,ffffffff,00000000,00000000
+cn06:2483641:2483771 [1] NCCL INFO Setting affinity for GPU 1 to ffffffff,ffffffff,00000000,00000000
+cn06:2483640:2483770 [0] NCCL INFO Setting affinity for GPU 0 to ffffffff,ffffffff
+cn06:2483641:2483771 [1] NCCL INFO Trees [0] -1/-1/-1->3->2 [1] -1/-1/-1->3->2
+cn06:2483641:2483771 [1] NCCL INFO P2P Chunksize set to 131072
+cn06:2483640:2483770 [0] NCCL INFO Trees [0] 3/-1/-1->2->0 [1] 3/0/-1->2->-1
+cn06:2483640:2483770 [0] NCCL INFO P2P Chunksize set to 131072
+cn02:860715:860842 [1] NCCL INFO Trees [0] -1/-1/-1->1->0 [1] -1/-1/-1->1->0
+cn02:860715:860842 [1] NCCL INFO P2P Chunksize set to 131072
+cn02:860714:860843 [0] NCCL INFO Channel 00/02 :    0   1   2   3
+cn02:860714:860843 [0] NCCL INFO Channel 01/02 :    0   1   2   3
+cn02:860714:860843 [0] NCCL INFO Trees [0] 1/2/-1->0->-1 [1] 1/-1/-1->0->2
+cn02:860714:860843 [0] NCCL INFO P2P Chunksize set to 131072
+cn02:860714:860843 [0] NCCL INFO Channel 00/0 : 3[3503000] -> 0[404000] [receive] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Channel 00/0 : 1[3503000] -> 2[404000] [receive] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 01/0 : 3[3503000] -> 0[404000] [receive] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 00/0 : 0[404000] -> 1[3503000] via P2P/IPC
+cn06:2483640:2483770 [0] NCCL INFO Channel 01/0 : 1[3503000] -> 2[404000] [receive] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Channel 00/0 : 2[404000] -> 3[3503000] via P2P/IPC
+cn06:2483641:2483771 [1] NCCL INFO Channel 00/0 : 3[3503000] -> 0[404000] [send] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Channel 01/0 : 2[404000] -> 3[3503000] via P2P/IPC
+cn02:860715:860842 [1] NCCL INFO Channel 00/0 : 1[3503000] -> 2[404000] [send] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 01/0 : 0[404000] -> 1[3503000] via P2P/IPC
+cn06:2483641:2483771 [1] NCCL INFO Channel 01/0 : 3[3503000] -> 0[404000] [send] via NET/IB/0
+cn02:860715:860842 [1] NCCL INFO Channel 01/0 : 1[3503000] -> 2[404000] [send] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Connected all rings
+cn06:2483641:2483771 [1] NCCL INFO Connected all rings
+cn06:2483641:2483771 [1] NCCL INFO Channel 00/0 : 3[3503000] -> 2[404000] via P2P/IPC
+cn02:860715:860842 [1] NCCL INFO Connected all rings
+cn02:860715:860842 [1] NCCL INFO Channel 00/0 : 1[3503000] -> 0[404000] via P2P/IPC
+cn02:860714:860843 [0] NCCL INFO Connected all rings
+cn06:2483641:2483771 [1] NCCL INFO Channel 01/0 : 3[3503000] -> 2[404000] via P2P/IPC
+cn02:860715:860842 [1] NCCL INFO Channel 01/0 : 1[3503000] -> 0[404000] via P2P/IPC
+cn06:2483640:2483770 [0] NCCL INFO Channel 00/0 : 0[404000] -> 2[404000] [receive] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 00/0 : 2[404000] -> 0[404000] [receive] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 01/0 : 2[404000] -> 0[404000] [receive] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Channel 01/0 : 0[404000] -> 2[404000] [receive] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 00/0 : 0[404000] -> 2[404000] [send] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Channel 00/0 : 2[404000] -> 0[404000] [send] via NET/IB/0
+cn02:860714:860843 [0] NCCL INFO Channel 01/0 : 0[404000] -> 2[404000] [send] via NET/IB/0
+cn06:2483640:2483770 [0] NCCL INFO Channel 01/0 : 2[404000] -> 0[404000] [send] via NET/IB/0
+cn02:860715:860842 [1] NCCL INFO Connected all trees
+cn02:860715:860842 [1] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+cn02:860715:860842 [1] NCCL INFO 2 coll channels, 0 nvls channels, 2 p2p channels, 2 p2p channels per peer
+cn06:2483641:2483771 [1] NCCL INFO Connected all trees
+cn06:2483641:2483771 [1] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+cn06:2483641:2483771 [1] NCCL INFO 2 coll channels, 0 nvls channels, 2 p2p channels, 2 p2p channels per peer
+cn06:2483640:2483770 [0] NCCL INFO Connected all trees
+cn06:2483640:2483770 [0] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+cn06:2483640:2483770 [0] NCCL INFO 2 coll channels, 0 nvls channels, 2 p2p channels, 2 p2p channels per peer
+cn02:860714:860843 [0] NCCL INFO Connected all trees
+cn02:860714:860843 [0] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+cn02:860714:860843 [0] NCCL INFO 2 coll channels, 0 nvls channels, 2 p2p channels, 2 p2p channels per peer
+cn02:860715:860842 [1] NCCL INFO comm 0x17a3a4050 rank 1 nranks 4 cudaDev 1 busId 3503000 commId 0xaad284bc9666e122 - Init COMPLETE
+cn02:860714:860843 [0] NCCL INFO comm 0x192df1130 rank 0 nranks 4 cudaDev 0 busId 404000 commId 0xaad284bc9666e122 - Init COMPLETE
+cn06:2483641:2483771 [1] NCCL INFO comm 0x185466a40 rank 3 nranks 4 cudaDev 1 busId 3503000 commId 0xaad284bc9666e122 - Init COMPLETE
+cn06:2483640:2483770 [0] NCCL INFO comm 0x1893419c0 rank 2 nranks 4 cudaDev 0 busId 404000 commId 0xaad284bc9666e122 - Init COMPLETE
+[lstm h=1] epoch 0: val RMSE=40.9178
+[lstm h=1] epoch 1: val RMSE=40.7365
+[lstm h=1] epoch 2: val RMSE=40.4484
+[lstm h=1] epoch 3: val RMSE=39.8922
+[lstm h=1] epoch 4: val RMSE=38.9468
+[lstm h=1] epoch 5: val RMSE=37.9271
+[lstm h=1] epoch 6: val RMSE=37.0129
+[lstm h=1] epoch 7: val RMSE=36.1759
+[lstm h=1] epoch 8: val RMSE=35.5022
+[lstm h=1] epoch 9: val RMSE=34.9807
+[lstm h=1] epoch 10: val RMSE=34.5452
+[lstm h=1] epoch 11: val RMSE=34.1563
+[lstm h=1] epoch 12: val RMSE=33.7944
+[lstm h=1] epoch 13: val RMSE=33.4487
+[lstm h=1] epoch 14: val RMSE=33.1151
+[lstm h=1] epoch 15: val RMSE=32.7903
+[lstm h=1] epoch 16: val RMSE=32.4736
+[lstm h=1] epoch 17: val RMSE=32.1622
+[lstm h=1] epoch 18: val RMSE=31.8568
+[lstm h=1] epoch 19: val RMSE=31.5566
+[lstm h=1] epoch 20: val RMSE=31.2606
+[lstm h=1] epoch 21: val RMSE=30.9682
+[lstm h=1] epoch 22: val RMSE=30.6800
+[lstm h=1] epoch 23: val RMSE=30.3949
+[lstm h=1] epoch 24: val RMSE=30.1126
+[lstm h=1] epoch 25: val RMSE=29.8339
+[lstm h=1] epoch 26: val RMSE=29.5579
+[lstm h=1] epoch 27: val RMSE=29.2842
+[lstm h=1] epoch 28: val RMSE=29.0122
+[lstm h=1] epoch 29: val RMSE=28.7428
+[lstm h=1] epoch 30: val RMSE=28.4758
+[lstm h=1] epoch 31: val RMSE=28.2114
+[lstm h=1] epoch 32: val RMSE=27.9490
+[lstm h=1] epoch 33: val RMSE=27.6876
+[lstm h=1] epoch 34: val RMSE=27.4282
+[lstm h=1] epoch 35: val RMSE=27.1706
+[lstm h=1] epoch 36: val RMSE=26.9151
+[lstm h=1] epoch 37: val RMSE=26.6608
+[lstm h=1] epoch 38: val RMSE=26.4082
+[lstm h=1] epoch 39: val RMSE=26.1575
+[lstm h=1] epoch 40: val RMSE=25.9083
+[lstm h=1] epoch 41: val RMSE=25.6608
+[lstm h=1] epoch 42: val RMSE=25.4143
+[lstm h=1] epoch 43: val RMSE=25.1693
+[lstm h=1] epoch 44: val RMSE=24.9255
+[lstm h=1] epoch 45: val RMSE=24.6839
+[lstm h=1] epoch 46: val RMSE=24.4429
+[lstm h=1] epoch 47: val RMSE=24.2041
+[lstm h=1] epoch 48: val RMSE=23.9656
+[lstm h=1] epoch 49: val RMSE=23.7288
+[lstm h=1] epoch 50: val RMSE=23.4940
+[lstm h=1] epoch 51: val RMSE=23.2600
+[lstm h=1] epoch 52: val RMSE=23.0274
+[lstm h=1] epoch 53: val RMSE=22.7955
+[lstm h=1] epoch 54: val RMSE=22.5647
+[lstm h=1] epoch 55: val RMSE=22.3363
+[lstm h=1] epoch 56: val RMSE=22.1082
+[lstm h=1] epoch 57: val RMSE=21.8818
+[lstm h=1] epoch 58: val RMSE=21.6562
+[lstm h=1] epoch 59: val RMSE=21.4318
+[lstm h=1] epoch 60: val RMSE=21.2088
+[lstm h=1] epoch 61: val RMSE=20.9871
+[lstm h=1] epoch 62: val RMSE=20.7664
+[lstm h=1] epoch 63: val RMSE=20.5466
+[lstm h=1] epoch 64: val RMSE=20.3287
+[lstm h=1] epoch 65: val RMSE=20.1115
+[lstm h=1] epoch 66: val RMSE=19.8953
+[lstm h=1] epoch 67: val RMSE=19.6807
+[lstm h=1] epoch 68: val RMSE=19.4663
+[lstm h=1] epoch 69: val RMSE=19.2539
+[lstm h=1] epoch 70: val RMSE=19.0422
+[lstm h=1] epoch 71: val RMSE=18.8316
+[lstm h=1] epoch 72: val RMSE=18.6220
+[lstm h=1] epoch 73: val RMSE=18.4137
+[lstm h=1] epoch 74: val RMSE=18.2067
+[lstm h=1] epoch 75: val RMSE=18.0008
+[lstm h=1] epoch 76: val RMSE=17.7958
+[lstm h=1] epoch 77: val RMSE=17.5920
+[lstm h=1] epoch 78: val RMSE=17.3897
+[lstm h=1] epoch 79: val RMSE=17.1884
+[lstm h=1] epoch 80: val RMSE=16.9878
+[lstm h=1] epoch 81: val RMSE=16.7889
+[lstm h=1] epoch 82: val RMSE=16.5906
+[lstm h=1] epoch 83: val RMSE=16.3937
+[lstm h=1] epoch 84: val RMSE=16.1986
+[lstm h=1] epoch 85: val RMSE=16.0042
+[lstm h=1] epoch 86: val RMSE=15.8111
+[lstm h=1] epoch 87: val RMSE=15.6191
+[lstm h=1] epoch 88: val RMSE=15.4277
+[lstm h=1] epoch 89: val RMSE=15.2384
+[lstm h=1] epoch 90: val RMSE=15.0498
+[lstm h=1] epoch 91: val RMSE=14.8620
+[lstm h=1] epoch 92: val RMSE=14.6752
+[lstm h=1] epoch 93: val RMSE=14.4904
+[lstm h=1] epoch 94: val RMSE=14.3060
+[lstm h=1] epoch 95: val RMSE=14.1237
+[lstm h=1] epoch 96: val RMSE=13.9417
+[lstm h=1] epoch 97: val RMSE=13.7612
+[lstm h=1] epoch 98: val RMSE=13.5820
+[lstm h=1] epoch 99: val RMSE=13.4044
+[lstm h=1] test metrics: {'rmse': 10.309638023376465, 'mae': 8.170778274536133, 'mape': 20.80763727426529, 'directional_accuracy': 0.5069204152249135, 'n': 578}
+cn02:860715:860847 [1] NCCL INFO [Service thread] Connection closed by localRank 1
+cn02:860714:860846 [0] NCCL INFO [Service thread] Connection closed by localRank 0
+cn06:2483641:2483788 [1] NCCL INFO [Service thread] Connection closed by localRank 1
+cn06:2483640:2483789 [0] NCCL INFO [Service thread] Connection closed by localRank 0
+cn02:860715:860715 [1] NCCL INFO comm 0x17a3a4050 rank 1 nranks 4 cudaDev 1 busId 3503000 - Abort COMPLETE
+cn06:2483641:2483641 [1] NCCL INFO comm 0x185466a40 rank 3 nranks 4 cudaDev 1 busId 3503000 - Abort COMPLETE
+cn06:2483640:2483640 [0] NCCL INFO comm 0x1893419c0 rank 2 nranks 4 cudaDev 0 busId 404000 - Abort COMPLETE
+cn02:860714:860714 [0] NCCL INFO comm 0x192df1130 rank 0 nranks 4 cudaDev 0 busId 404000 - Abort COMPLETE
+Job completed.
+
+
+PS:
+
+Read file <train_4gpu_2nodes.74515.err> for stderr output of this job.
+
