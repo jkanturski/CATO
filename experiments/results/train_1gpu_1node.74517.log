@@ -1,0 +1,106 @@
+Sender: LSF System <lsfadmin@cn05.ai.cato.cnt.uksw.edu.pl>
+Subject: Job 74517: <train_1gpu_1node> in cluster <cato> Done
+
+Job <train_1gpu_1node> was submitted from host <ln02.ai.cato.cnt.uksw.edu.pl> by user <jkanturski> in cluster <cato> at Wed Sep 23 12:52:39 2026
+Job was executed on host(s) <cn05.ai.cato.cnt.uksw.edu.pl>, in queue <short>, as user <jkanturski> in cluster <cato> at Wed Sep 23 12:52:40 2026
+</home/jkanturski> was used as the home directory.
+</home/jkanturski/CATO/experiments> was used as the working directory.
+Started at Wed Sep 23 12:52:40 2026
+Terminated at Wed Sep 23 12:53:25 2026
+Results reported at Wed Sep 23 12:53:25 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#BSUB -J train_1gpu_1node
+#BSUB -n 1
+#BSUB -R "span[ptile=1]"
+#BSUB -gpu "num=1:mode=exclusive_process"
+#BSUB -q short
+#BSUB -o train_1gpu_1node.%J.log
+#BSUB -e train_1gpu_1node.%J.err
+
+torchrun --standalone --nnodes=1 --nproc_per_node=1 train_lstm_tcn_ddp.py --model lstm --horizon 1
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   14.16 sec.
+    Max Memory :                                 2171 MB
+    Average Memory :                             516.33 MB
+    Total Requested Memory :                     -
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              5
+    Max Threads :                                72
+    Run time :                                   45 sec.
+    Turnaround time :                            46 sec.
+
+The output (if any) follows:
+
+[lstm h=1] epoch 0: val RMSE=39.8638
+[lstm h=1] epoch 1: val RMSE=36.1955
+[lstm h=1] epoch 2: val RMSE=34.0154
+[lstm h=1] epoch 3: val RMSE=32.6112
+[lstm h=1] epoch 4: val RMSE=31.3583
+[lstm h=1] epoch 5: val RMSE=30.1872
+[lstm h=1] epoch 6: val RMSE=29.0689
+[lstm h=1] epoch 7: val RMSE=27.9901
+[lstm h=1] epoch 8: val RMSE=26.9483
+[lstm h=1] epoch 9: val RMSE=25.9392
+[lstm h=1] epoch 10: val RMSE=24.9494
+[lstm h=1] epoch 11: val RMSE=23.9808
+[lstm h=1] epoch 12: val RMSE=23.0404
+[lstm h=1] epoch 13: val RMSE=22.1098
+[lstm h=1] epoch 14: val RMSE=21.2102
+[lstm h=1] epoch 15: val RMSE=20.3233
+[lstm h=1] epoch 16: val RMSE=19.4623
+[lstm h=1] epoch 17: val RMSE=18.6077
+[lstm h=1] epoch 18: val RMSE=17.7866
+[lstm h=1] epoch 19: val RMSE=16.9844
+[lstm h=1] epoch 20: val RMSE=16.1971
+[lstm h=1] epoch 21: val RMSE=15.4233
+[lstm h=1] epoch 22: val RMSE=14.6680
+[lstm h=1] epoch 23: val RMSE=13.9338
+[lstm h=1] epoch 24: val RMSE=13.2156
+[lstm h=1] epoch 25: val RMSE=12.5221
+[lstm h=1] epoch 26: val RMSE=11.8469
+[lstm h=1] epoch 27: val RMSE=11.1835
+[lstm h=1] epoch 28: val RMSE=10.5452
+[lstm h=1] epoch 29: val RMSE=9.9331
+[lstm h=1] epoch 30: val RMSE=9.3539
+[lstm h=1] epoch 31: val RMSE=8.7961
+[lstm h=1] epoch 32: val RMSE=8.2651
+[lstm h=1] epoch 33: val RMSE=7.7566
+[lstm h=1] epoch 34: val RMSE=7.2846
+[lstm h=1] epoch 35: val RMSE=6.8512
+[lstm h=1] epoch 36: val RMSE=6.4610
+[lstm h=1] epoch 37: val RMSE=6.1041
+[lstm h=1] epoch 38: val RMSE=5.7967
+[lstm h=1] epoch 39: val RMSE=5.5367
+[lstm h=1] epoch 40: val RMSE=5.3227
+[lstm h=1] epoch 41: val RMSE=5.1611
+[lstm h=1] epoch 42: val RMSE=5.0510
+[lstm h=1] epoch 43: val RMSE=4.9948
+[lstm h=1] epoch 44: val RMSE=4.9887
+[lstm h=1] epoch 45: val RMSE=5.0275
+[lstm h=1] epoch 46: val RMSE=5.1101
+[lstm h=1] epoch 47: val RMSE=5.2229
+[lstm h=1] epoch 48: val RMSE=5.3731
+[lstm h=1] epoch 49: val RMSE=5.5459
+[lstm h=1] epoch 50: val RMSE=5.7366
+[lstm h=1] epoch 51: val RMSE=5.9489
+[lstm h=1] epoch 52: val RMSE=6.1676
+[lstm h=1] epoch 53: val RMSE=6.3974
+[lstm h=1] epoch 54: val RMSE=6.6320
+[lstm h=1] early stopping at epoch 54 (best val RMSE=4.9887)
+[lstm h=1] test metrics: {'rmse': 7.67689847946167, 'mae': 6.691152095794678, 'mape': 18.433088064193726, 'directional_accuracy': 0.4982698961937716, 'n': 578}
+
+
+PS:
+
+Read file <train_1gpu_1node.74517.err> for stderr output of this job.
+
